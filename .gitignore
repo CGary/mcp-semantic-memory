@@ -1,13 +1,16 @@
 # Binarios
 hsme
 bin/
+*.exe
 
-# Bases de datos (Privadas/Locales)
+# Bases de datos y archivos de estado (Privados)
 *.db
 *.db-shm
 *.db-wal
 data/
+engram.db*
 
-# Logs y temporales
-*.log
+# Infraestructura y temporales
+.worktrees/
 tmp/
+*.log
