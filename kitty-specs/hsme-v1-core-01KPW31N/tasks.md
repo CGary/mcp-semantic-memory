@@ -17,10 +17,10 @@
 | T009 | Define Embedder and GraphExtractor interfaces | WP03 | [D] |
 | T010 | Implement polling worker logic | WP03 | [D] |
 | T011 | Implement `embed` and `graph_extract` execution | WP03 | [D] |
-| T012 | Create search block tests (RRF scoring logic) | WP04 | [P] |
-| T013 | Implement Reciprocal Rank Fusion (FTS5 + Vec0) | WP04 | [P] |
-| T014 | Create graph traversal block tests | WP04 | [P] |
-| T015 | Implement `trace_dependencies` recursive CTE traversal logic | WP04 | [P] |
+| T012 | Create search block tests (RRF scoring logic) | WP04 | [D] |
+| T013 | Implement Reciprocal Rank Fusion (FTS5 + Vec0) | WP04 | [D] |
+| T014 | Create graph traversal block tests | WP04 | [D] |
+| T015 | Implement `trace_dependencies` recursive CTE traversal logic | WP04 | [D] |
 | T016 | Setup stdio MCP server skeleton | WP05 | | [D] |
 | T017 | Register `store_context` and `search_fuzzy` handlers | WP05 | | [D] |
 | T018 | Register `search_exact` and `trace_dependencies` handlers | WP05 | | [D] |
@@ -60,10 +60,10 @@
 **Prompt**: `tasks/WP04-search-traversal.md` (~300 lines)
 **Dependencies**: WP01, WP02
 **Included Subtasks**:
-- [ ] T012 Create search block tests (RRF scoring logic) (WP04)
-- [ ] T013 Implement Reciprocal Rank Fusion (FTS5 + Vec0) (WP04)
-- [ ] T014 Create graph traversal block tests (WP04)
-- [ ] T015 Implement `trace_dependencies` recursive CTE traversal logic (WP04)
+- [x] T012 Create search block tests (RRF scoring logic) (WP04)
+- [x] T013 Implement Reciprocal Rank Fusion (FTS5 + Vec0) (WP04)
+- [x] T014 Create graph traversal block tests (WP04)
+- [x] T015 Implement `trace_dependencies` recursive CTE traversal logic (WP04)
 
 ## WP05: MCP Transport Layer
 **Goal**: Wrap the core logic into an MCP stdio server and expose the configured tools.
