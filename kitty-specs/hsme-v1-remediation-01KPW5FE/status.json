@@ -1,7 +1,7 @@
 {
-  "event_count": 11,
-  "last_event_id": "01KPW616994NHMK6BWZAE9B6DG",
-  "materialized_at": "2026-04-23T03:27:11.657918+00:00",
+  "event_count": 13,
+  "last_event_id": "01KPW62HXQKAJ2MBJV5Q06TKGW",
+  "materialized_at": "2026-04-23T03:27:56.343294+00:00",
   "mission_number": "",
   "mission_slug": "hsme-v1-remediation-01KPW5FE",
   "mission_type": "software-dev",
@@ -12,9 +12,9 @@
     "claimed": 0,
     "done": 0,
     "for_review": 0,
-    "in_progress": 0,
+    "in_progress": 1,
     "in_review": 0,
-    "planned": 1
+    "planned": 0
   },
   "work_packages": {
     "WP01": {
@@ -32,11 +32,11 @@
       "last_transition_at": "2026-04-23T03:27:11.657918+00:00"
     },
     "WP03": {
-      "actor": "finalize-tasks",
+      "actor": "gemini:gemini:fast:implementer",
       "force_count": 1,
-      "lane": "planned",
-      "last_event_id": "01KPW5VHYDQBECRGK3YF39SJE7",
-      "last_transition_at": "2026-04-23T03:24:06.989944+00:00"
+      "lane": "in_progress",
+      "last_event_id": "01KPW62HXQKAJ2MBJV5Q06TKGW",
+      "last_transition_at": "2026-04-23T03:27:56.343294+00:00"
     }
   }
 }
