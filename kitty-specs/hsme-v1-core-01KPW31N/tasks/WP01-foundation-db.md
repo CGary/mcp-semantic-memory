@@ -74,3 +74,7 @@ Current branch at workflow start: master. Planning/base branch for this feature:
 4. Execute the `PRAGMA` setup (WAL, busy timeout, foreign keys).
 5. Apply the `CREATE TABLE` and `CREATE VIRTUAL TABLE` SQL definitions provided in the `data-model.md` artifact.
 6. Verify the module test passes.
+
+## Activity Log
+
+- 2026-04-23T02:52:13Z – claude – shell_pid=1626831 – Ready for review. Note: Tests fail locally only due to missing vec0 shared library.
