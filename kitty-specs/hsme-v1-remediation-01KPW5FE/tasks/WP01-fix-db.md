@@ -51,3 +51,7 @@ Current branch at workflow start: master. Planning/base branch for this feature:
 **Steps**:
 1. Open `src/core/indexer/ingest.go`.
 2. Verify that the `StoreContext` function explicitly executes an `INSERT INTO memory_chunks_fts` command within its database transaction when adding new chunks.
+
+## Activity Log
+
+- 2026-04-23T03:25:30Z – claude – shell_pid=1691943 – Triggers removed.
