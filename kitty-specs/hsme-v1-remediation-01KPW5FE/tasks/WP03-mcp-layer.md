@@ -1,0 +1,51 @@
+---
+work_package_id: WP03
+title: MCP Transport Layer
+dependencies:
+- WP02
+requirement_refs:
+- FR-006
+planning_base_branch: master
+merge_target_branch: master
+branch_strategy: 'Current branch at workflow start: master. Planning/base branch for this feature: master. Completed changes must merge into master.'
+subtasks:
+- T006
+- T007
+agent: claude
+history: []
+agent_profile: implementer-ivan
+authoritative_surface: cmd/server/
+execution_mode: code_change
+owned_files:
+- cmd/server/main.go
+- src/mcp/**
+role: implementer
+tags: []
+---
+
+## ⚡ Do This First: Load Agent Profile
+```bash
+spec-kitty agent profile load --id implementer-ivan
+```
+
+## Objective
+Implement the missing MCP stdio server entry point and register the required tools.
+
+## Branch Strategy
+Current branch at workflow start: master. Planning/base branch for this feature: master. Completed changes must merge into master.
+
+## Subtasks
+
+### T006: Create `cmd/server/main.go`
+**Purpose**: Create the executable entry point.
+**Steps**:
+1. Create `cmd/server/main.go`.
+2. Initialize the SQLite database connection using `sqlite.InitDB()`.
+3. Initialize the background worker in a goroutine.
+4. Start an MCP stdio server loop.
+
+### T007: Register all 4 MCP tools
+**Purpose**: Connect the MCP interface to the core logic.
+**Steps**:
+1. Register handlers for `store_context`, `search_fuzzy`, `search_exact`, and `trace_dependencies`.
+2. Connect these handlers to the `core/indexer`, `core/search`, and `core/worker` logic respectively, handling inputs and formatting JSON outputs per the spec.
