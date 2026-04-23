@@ -100,7 +100,7 @@ func main() {
 		if args.Limit == 0 {
 			args.Limit = 10
 		}
-		return search.FuzzySearch(ctx, db, args.Query, args.Limit)
+		return search.FuzzySearch(ctx, db, &mockEmbedder{}, args.Query, args.Limit)
 	})
 
 	srv.RegisterTool("search_exact", func(params json.RawMessage) (interface{}, error) {
