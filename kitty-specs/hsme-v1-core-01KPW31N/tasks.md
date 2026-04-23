@@ -9,10 +9,10 @@
 | T001 | Setup go project and define core models | WP01 | | [D] |
 | T002 | Create test stubs for the storage engine (BDD tests first) | WP01 | | [D] |
 | T003 | Implement the SQLite schema initialization (WAL, vec0, fts5) | WP01 | | [D] |
-| T004 | Create chunker and deduplication block tests | WP02 | |
-| T005 | Implement content hashing and chunking logic | WP02 | |
-| T006 | Implement `store_context` ingestion logic | WP02 | |
-| T007 | Enqueue async tasks on ingestion | WP02 | |
+| T004 | Create chunker and deduplication block tests | WP02 | | [D] |
+| T005 | Implement content hashing and chunking logic | WP02 | | [D] |
+| T006 | Implement `store_context` ingestion logic | WP02 | | [D] |
+| T007 | Enqueue async tasks on ingestion | WP02 | | [D] |
 | T008 | Create worker block tests (leasing, retry counts) | WP03 | [P] |
 | T009 | Define Embedder and GraphExtractor interfaces | WP03 | [P] |
 | T010 | Implement polling worker logic | WP03 | [P] |
@@ -39,10 +39,10 @@
 **Prompt**: `tasks/WP02-indexer-core.md` (~300 lines)
 **Dependencies**: WP01
 **Included Subtasks**:
-- [ ] T004 Create chunker and deduplication block tests (WP02)
-- [ ] T005 Implement content hashing and chunking logic (WP02)
-- [ ] T006 Implement `store_context` ingestion logic (WP02)
-- [ ] T007 Enqueue async tasks on ingestion (WP02)
+- [x] T004 Create chunker and deduplication block tests (WP02)
+- [x] T005 Implement content hashing and chunking logic (WP02)
+- [x] T006 Implement `store_context` ingestion logic (WP02)
+- [x] T007 Enqueue async tasks on ingestion (WP02)
 
 ## WP03: Async Worker & Interfaces
 **Goal**: Develop the background worker responsible for polling `async_tasks` using leasing, and the interfaces for inference logic.
