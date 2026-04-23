@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -62,18 +63,31 @@ func (s *Server) RegisterTool(name string, description string, schema interface{
 }
 
 func (s *Server) Serve() {
-	fmt.Fprintf(os.Stderr, "HSME MCP server starting...\n")
-	decoder := json.NewDecoder(os.Stdin)
+	fmt.Fprintf(os.Stderr, "HSME MCP server starting (v1.0.1)...\n")
+	
+	reader := bufio.NewReader(os.Stdin)
 	for {
-		var req JSONRPCRequest
-		if err := decoder.Decode(&req); err != nil {
+		line, err := reader.ReadString('\n')
+		if err != nil {
 			if err == io.EOF {
+				fmt.Fprintf(os.Stderr, "Standard input closed (EOF)\n")
 				return
 			}
-			fmt.Fprintf(os.Stderr, "Error decoding request: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error reading from stdin: %v\n", err)
 			continue
 		}
 
+		if len(line) == 0 {
+			continue
+		}
+
+		var req JSONRPCRequest
+		if err := json.Unmarshal([]byte(line), &req); err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing JSON-RPC request: %v | Raw: %s\n", err, line)
+			continue
+		}
+
+		fmt.Fprintf(os.Stderr, "Received request: %s (ID: %s)\n", req.Method, string(req.ID))
 		s.handleRequest(req)
 	}
 }
@@ -81,11 +95,18 @@ func (s *Server) Serve() {
 func (s *Server) sendResponse(resp JSONRPCResponse) {
 	s.writeMutex.Lock()
 	defer s.writeMutex.Unlock()
-	json.NewEncoder(os.Stdout).Encode(resp)
+	
+	data, err := json.Marshal(resp)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error marshaling response: %v\n", err)
+		return
+	}
+	
+	os.Stdout.Write(data)
+	os.Stdout.Write([]byte("\n"))
 }
 
 func (s *Server) handleRequest(req JSONRPCRequest) {
-	// Notifications (id is null) do not expect a response
 	isNotification := req.ID == nil || string(req.ID) == "null"
 
 	var resp JSONRPCResponse
@@ -96,14 +117,18 @@ func (s *Server) handleRequest(req JSONRPCRequest) {
 	case "initialize":
 		resp.Result = map[string]interface{}{
 			"protocolVersion": "2024-11-05",
-			"capabilities":    map[string]interface{}{},
+			"capabilities": map[string]interface{}{
+				"tools": map[string]interface{}{
+					"listChanged": false,
+				},
+			},
 			"serverInfo": map[string]interface{}{
 				"name":    "hsme",
-				"version": "1.0.0",
+				"version": "1.0.1",
 			},
 		}
 	case "notifications/initialized":
-		fmt.Fprintf(os.Stderr, "Client initialized\n")
+		fmt.Fprintf(os.Stderr, "Handshake complete\n")
 		return
 	case "tools/list", "list_tools":
 		var tools []Tool
@@ -139,6 +164,8 @@ func (s *Server) handleRequest(req JSONRPCRequest) {
 				resp.Error = &JSONRPCError{Code: -32601, Message: "Tool not found"}
 			}
 		}
+	case "ping":
+		resp.Result = map[string]interface{}{}
 	default:
 		if isNotification {
 			return
