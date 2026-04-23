@@ -6,8 +6,8 @@
 ## Subtask Index
 | ID | Description | WP | Parallel |
 |---|---|---|---|
-| T001 | Remove implicit FTS5 triggers from SQLite schema | WP01 | |
-| T002 | Verify `ingest.go` explicitly syncs FTS5 | WP01 | |
+| T001 | Remove implicit FTS5 triggers from SQLite schema | WP01 | | [D] |
+| T002 | Verify `ingest.go` explicitly syncs FTS5 | WP01 | | [D] |
 | T003 | Create `src/core/worker` module and implement leasing loop | WP02 | [P] |
 | T004 | Create `src/core/search` module and implement RRF | WP02 | [P] |
 | T005 | Ensure `tests/modules/worker_test.go` and `search_test.go` compile and pass | WP02 | [P] |
@@ -19,8 +19,8 @@
 **Prompt**: `tasks/WP01-fix-db.md` (~150 lines)
 **Dependencies**: None
 **Included Subtasks**:
-- [ ] T001 Remove implicit FTS5 triggers from SQLite schema (WP01)
-- [ ] T002 Verify `ingest.go` explicitly syncs FTS5 (WP01)
+- [x] T001 Remove implicit FTS5 triggers from SQLite schema (WP01)
+- [x] T002 Verify `ingest.go` explicitly syncs FTS5 (WP01)
 
 ## WP02: Implement Missing Modules
 **Goal**: Actually implement the `worker` and `search` packages that were stubbed in the previous mission, ensuring the tests compile and run.
