@@ -21,8 +21,8 @@ func StoreContext(db *sql.DB, content string, sourceType string, supersedesID *i
 			return existingID, nil // deduplicated
 		}
 		// forceReingest is true. Spec says:
-		// "a new memory is created with the same content hash only if the caller 
-		// passes supersedes_memory_id pointing to the existing entry. 
+		// "a new memory is created with the same content hash only if the caller
+		// passes supersedes_memory_id pointing to the existing entry.
 		// Otherwise the call is rejected with DUPLICATE_CONTENT."
 		if supersedesID == nil || *supersedesID != existingID {
 			return 0, fmt.Errorf("DUPLICATE_CONTENT: hash exists and supersedes_memory_id does not match")

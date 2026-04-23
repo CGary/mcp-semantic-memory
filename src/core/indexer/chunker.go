@@ -28,20 +28,20 @@ func recursiveSplit(text string, delimiters []string) []string {
 
 	delimiter := delimiters[0]
 	parts := strings.Split(text, delimiter)
-	
+
 	var chunks []string
 	var currentChunk []string
 	currentTokens := 0
 
 	for _, part := range parts {
 		partTokens := estimateTokens(part)
-		
+
 		if currentTokens+partTokens > MaxChunkTokens && len(currentChunk) > 0 {
 			chunks = append(chunks, strings.Join(currentChunk, delimiter))
 			currentChunk = nil
 			currentTokens = 0
 		}
-		
+
 		if partTokens > MaxChunkTokens {
 			// Part itself is too large, split it further
 			subChunks := recursiveSplit(part, delimiters[1:])

@@ -29,16 +29,16 @@ func TestContentHashing(t *testing.T) {
 func TestChunking(t *testing.T) {
 	// Recursive splitting on \n\n, \n, space.
 	// We want to test that it splits correctly when content is "large"
-	// For this test, let's assume a small target to trigger splits easily if possible, 
+	// For this test, let's assume a small target to trigger splits easily if possible,
 	// but the requirement says "targeting 400-800 tokens".
-	
+
 	content := "Para 1 line 1\nPara 1 line 2\n\nPara 2 line 1"
 	chunks := indexer.Split(content, "text")
-	
+
 	if len(chunks) == 0 {
 		t.Fatal("Expected at least one chunk")
 	}
-	
+
 	// If the content is small, it might be just one chunk.
 	// Let's create a larger content to see if it splits.
 	largeContent := ""
@@ -64,12 +64,12 @@ func TestStoreContext(t *testing.T) {
 
 	content := "Unique content for test"
 	sourceType := "test"
-	
+
 	id, err := indexer.StoreContext(db, content, sourceType, nil, false)
 	if err != nil {
 		t.Fatalf("StoreContext failed: %v", err)
 	}
-	
+
 	if id <= 0 {
 		t.Errorf("Expected positive ID, got %d", id)
 	}
@@ -97,7 +97,7 @@ func TestStoreContext(t *testing.T) {
 	if id == id3 {
 		t.Errorf("Expected different ID for force reingest, got %d", id3)
 	}
-	
+
 	// Verify async tasks were enqueued for the new ID
 	var count int
 	err = db.QueryRow("SELECT COUNT(*) FROM async_tasks WHERE memory_id = ?", id3).Scan(&count)

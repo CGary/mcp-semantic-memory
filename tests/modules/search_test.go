@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
+	vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
 	"github.com/hsme/core/src/core/indexer"
 	"github.com/hsme/core/src/core/search"
 	"github.com/hsme/core/src/storage/sqlite"
-	vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
 )
 
 type mockSearchEmbedder struct {

@@ -56,7 +56,7 @@ func TestStorageInitialization(t *testing.T) {
 			t.Errorf("Table %s does not exist", table)
 		}
 	}
-	
+
 	// FTS and VEC tables might be virtual, so check specifically if they exist in sqlite_master
 	virtualTables := []string{
 		"memory_chunks_fts",

@@ -10,25 +10,12 @@ import (
 	"syscall"
 
 	"github.com/hsme/core/src/core/indexer"
+	"github.com/hsme/core/src/core/inference/ollama"
 	"github.com/hsme/core/src/core/search"
 	"github.com/hsme/core/src/core/worker"
 	"github.com/hsme/core/src/mcp"
 	"github.com/hsme/core/src/storage/sqlite"
 )
-
-// Mock implementations for worker interfaces
-type mockEmbedder struct{}
-
-func (m *mockEmbedder) GenerateVector(ctx context.Context, text string) ([]float32, error) {
-	return make([]float32, 768), nil
-}
-func (m *mockEmbedder) Dimension() int { return 768 }
-
-type mockExtractor struct{}
-
-func (m *mockExtractor) ExtractEntities(ctx context.Context, text string) (worker.KnowledgeGraph, error) {
-	return worker.KnowledgeGraph{}, nil
-}
 
 func main() {
 	dbPath := os.Getenv("SQLITE_DB_PATH")
@@ -42,8 +29,16 @@ func main() {
 	}
 	defer db.Close()
 
+	ollamaHost := os.Getenv("OLLAMA_HOST")
+	embedModel := os.Getenv("EMBEDDING_MODEL")
+	extractModel := os.Getenv("EXTRACTION_MODEL")
+
+	client := ollama.NewClient(ollamaHost)
+	embedder := ollama.NewEmbedder(client, embedModel, 768)
+	extractor := ollama.NewExtractor(client, extractModel)
+
 	// Initialize worker
-	w := worker.NewWorker(db, &mockEmbedder{}, &mockExtractor{})
+	w := worker.NewWorker(db, embedder, extractor)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -100,7 +95,7 @@ func main() {
 		if args.Limit == 0 {
 			args.Limit = 10
 		}
-		return search.FuzzySearch(ctx, db, &mockEmbedder{}, args.Query, args.Limit)
+		return search.FuzzySearch(ctx, db, embedder, args.Query, args.Limit)
 	})
 
 	srv.RegisterTool("search_exact", func(params json.RawMessage) (interface{}, error) {

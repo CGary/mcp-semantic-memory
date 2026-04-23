@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hsme/core/src/storage/sqlite"
 	"github.com/hsme/core/src/core/worker"
+	"github.com/hsme/core/src/storage/sqlite"
 	_ "github.com/mattn/go-sqlite3"
 )
 

@@ -38,9 +38,9 @@ type DependencyEdge struct {
 }
 
 type TraceResult struct {
-	Entity string           `json:"entity"`
+	Entity string                   `json:"entity"`
 	Nodes  []map[string]interface{} `json:"nodes"`
-	Edges  []DependencyEdge `json:"edges"`
+	Edges  []DependencyEdge         `json:"edges"`
 }
 
 func TraceDependencies(ctx context.Context, db *sql.DB, entityName string, direction string, maxDepth int) (*TraceResult, error) {

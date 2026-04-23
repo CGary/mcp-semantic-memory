@@ -155,7 +155,7 @@ func (w *Worker) ExecuteTask(ctx context.Context, task *AsyncTask) error {
 				VALUES(?, ?, ?) 
 				ON CONFLICT(type, canonical_name) 
 				DO UPDATE SET display_name=excluded.display_name 
-				RETURNING id`, 
+				RETURNING id`,
 				node.Type, node.Name, node.Name).Scan(&nodeID)
 			if err != nil {
 				// Fallback if RETURNING is not supported or other error
@@ -171,7 +171,7 @@ func (w *Worker) ExecuteTask(ctx context.Context, task *AsyncTask) error {
 			if okS && okT {
 				_, _ = w.db.ExecContext(ctx, `
 					INSERT OR IGNORE INTO kg_edge_evidence(source_node_id, target_node_id, relation_type, memory_id) 
-					VALUES(?, ?, ?, ?)`, 
+					VALUES(?, ?, ?, ?)`,
 					sourceID, targetID, edge.Relation, task.MemoryID)
 			}
 		}

@@ -3,14 +3,14 @@ package models
 import "time"
 
 type MemoryDocument struct {
-	ID           int64      `json:"id"`
-	RawContent   string     `json:"raw_content"`
-	ContentHash  string     `json:"content_hash"`
-	SourceType   string     `json:"source_type"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
-	SupersededBy *int64     `json:"superseded_by"`
-	Status       string     `json:"status"`
+	ID           int64     `json:"id"`
+	RawContent   string    `json:"raw_content"`
+	ContentHash  string    `json:"content_hash"`
+	SourceType   string    `json:"source_type"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	SupersededBy *int64    `json:"superseded_by"`
+	Status       string    `json:"status"`
 }
 
 type MemoryChunk struct {
