@@ -8,5 +8,7 @@
   "purpose_context": "Develop the local MCP server with SQLite, FTS5, and vector search, following the Technical_Specification.md design.",
   "purpose_tldr": "Implement V1 of the Hybrid Semantic Memory Engine",
   "slug": "hsme-v1-core-01KPW31N",
-  "target_branch": "master"
+  "target_branch": "master",
+  "vcs": "git",
+  "vcs_locked_at": "2026-04-23T02:47:44.252861+00:00"
 }
