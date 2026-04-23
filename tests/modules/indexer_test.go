@@ -58,16 +58,14 @@ func TestStoreContext(t *testing.T) {
 
 	db, err := sqlite.InitDB(dbPath)
 	if err != nil {
-		// This might fail if vec0 is missing, but we expect logically correct code.
-		t.Skipf("Skipping StoreContext test because DB init failed (likely missing vec0): %v", err)
-		return
+		t.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer db.Close()
 
 	content := "Unique content for test"
 	sourceType := "test"
 	
-	id, err := indexer.StoreContext(db, content, sourceType, false)
+	id, err := indexer.StoreContext(db, content, sourceType, nil, false)
 	if err != nil {
 		t.Fatalf("StoreContext failed: %v", err)
 	}
@@ -77,7 +75,7 @@ func TestStoreContext(t *testing.T) {
 	}
 
 	// Test deduplication
-	id2, err := indexer.StoreContext(db, content, sourceType, false)
+	id2, err := indexer.StoreContext(db, content, sourceType, nil, false)
 	if err != nil {
 		t.Fatalf("StoreContext failed on duplicate: %v", err)
 	}
@@ -85,8 +83,14 @@ func TestStoreContext(t *testing.T) {
 		t.Errorf("Expected same ID for duplicate content, got %d and %d", id, id2)
 	}
 
-	// Test force reingest
-	id3, err := indexer.StoreContext(db, content, sourceType, true)
+	// Test force reingest WITHOUT supersedes (should fail)
+	_, err = indexer.StoreContext(db, content, sourceType, nil, true)
+	if err == nil {
+		t.Error("Expected error for force reingest without supersedes_memory_id")
+	}
+
+	// Test force reingest WITH supersedes
+	id3, err := indexer.StoreContext(db, content, sourceType, &id, true)
 	if err != nil {
 		t.Fatalf("StoreContext failed on force reingest: %v", err)
 	}
@@ -94,14 +98,27 @@ func TestStoreContext(t *testing.T) {
 		t.Errorf("Expected different ID for force reingest, got %d", id3)
 	}
 	
-	// Verify async tasks were enqueued
+	// Verify async tasks were enqueued for the new ID
 	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM async_tasks WHERE memory_id = ?", id).Scan(&count)
+	err = db.QueryRow("SELECT COUNT(*) FROM async_tasks WHERE memory_id = ?", id3).Scan(&count)
 	if err != nil {
 		t.Fatalf("Failed to query async_tasks: %v", err)
 	}
-	// T007 expects two tasks: embed and graph_extract
 	if count != 2 {
-		t.Errorf("Expected 2 async tasks for memory %d, got %d", id, count)
+		t.Errorf("Expected 2 async tasks for memory %d, got %d", id3, count)
+	}
+
+	// Verify old memory is superseded
+	var status string
+	var supersededBy int64
+	err = db.QueryRow("SELECT status, superseded_by FROM memories WHERE id = ?", id).Scan(&status, &supersededBy)
+	if err != nil {
+		t.Fatalf("Failed to query old memory: %v", err)
+	}
+	if status != "superseded" {
+		t.Errorf("Expected status 'superseded', got %s", status)
+	}
+	if supersededBy != id3 {
+		t.Errorf("Expected superseded_by %d, got %d", id3, supersededBy)
 	}
 }

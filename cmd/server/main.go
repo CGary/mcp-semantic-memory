@@ -26,8 +26,8 @@ func (m *mockEmbedder) Dimension() int { return 768 }
 
 type mockExtractor struct{}
 
-func (m *mockExtractor) ExtractEntities(ctx context.Context, text string) ([]string, error) {
-	return []string{}, nil
+func (m *mockExtractor) ExtractEntities(ctx context.Context, text string) (worker.KnowledgeGraph, error) {
+	return worker.KnowledgeGraph{}, nil
 }
 
 func main() {
@@ -71,13 +71,15 @@ func main() {
 	// Register tools
 	srv.RegisterTool("store_context", func(params json.RawMessage) (interface{}, error) {
 		var args struct {
-			Content    string `json:"content"`
-			SourceType string `json:"source_type"`
+			Content            string `json:"content"`
+			SourceType         string `json:"source_type"`
+			SupersedesMemoryID *int64 `json:"supersedes_memory_id"`
+			ForceReingest      bool   `json:"force_reingest"`
 		}
 		if err := json.Unmarshal(params, &args); err != nil {
 			return nil, err
 		}
-		id, err := indexer.StoreContext(db, args.Content, args.SourceType, false)
+		id, err := indexer.StoreContext(db, args.Content, args.SourceType, args.SupersedesMemoryID, args.ForceReingest)
 		if err != nil {
 			return nil, err
 		}

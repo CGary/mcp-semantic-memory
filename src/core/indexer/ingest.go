@@ -9,19 +9,26 @@ import (
 )
 
 // StoreContext ingests a new memory document.
-func StoreContext(db *sql.DB, content string, sourceType string, forceReingest bool) (int64, error) {
+func StoreContext(db *sql.DB, content string, sourceType string, supersedesID *int64, forceReingest bool) (int64, error) {
 	// 1. Compute hash for deduplication
 	hash := ComputeHash(content)
 
 	// 2. Check for deduplication
-	if !forceReingest {
-		var existingID int64
-		err := db.QueryRow("SELECT id FROM memories WHERE content_hash = ?", hash).Scan(&existingID)
-		if err == nil {
-			return existingID, nil
-		} else if err != sql.ErrNoRows {
-			return 0, fmt.Errorf("failed to check for existing content: %w", err)
+	var existingID int64
+	err := db.QueryRow("SELECT id FROM memories WHERE content_hash = ?", hash).Scan(&existingID)
+	if err == nil {
+		if !forceReingest {
+			return existingID, nil // deduplicated
 		}
+		// forceReingest is true. Spec says:
+		// "a new memory is created with the same content hash only if the caller 
+		// passes supersedes_memory_id pointing to the existing entry. 
+		// Otherwise the call is rejected with DUPLICATE_CONTENT."
+		if supersedesID == nil || *supersedesID != existingID {
+			return 0, fmt.Errorf("DUPLICATE_CONTENT: hash exists and supersedes_memory_id does not match")
+		}
+	} else if err != sql.ErrNoRows {
+		return 0, fmt.Errorf("failed to check for existing content: %w", err)
 	}
 
 	// 3. Start transaction
@@ -31,11 +38,19 @@ func StoreContext(db *sql.DB, content string, sourceType string, forceReingest b
 	}
 	defer tx.Rollback()
 
-	// 4. Insert into memories
+	// 4. Handle supersedence BEFORE insert to avoid UNIQUE constraint on active hash
+	if supersedesID != nil {
+		_, err = tx.Exec("UPDATE memories SET status = 'superseded', updated_at = ? WHERE id = ?", time.Now(), *supersedesID)
+		if err != nil {
+			return 0, fmt.Errorf("failed to update superseded memory: %w", err)
+		}
+	}
+
+	// 5. Insert into memories
 	res, err := tx.Exec(`
 		INSERT INTO memories (raw_content, content_hash, source_type, status, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?)
-	`, content, hash, sourceType, "pending", time.Now(), time.Now())
+	`, content, hash, sourceType, "active", time.Now(), time.Now())
 	if err != nil {
 		return 0, fmt.Errorf("failed to insert memory: %w", err)
 	}
@@ -45,7 +60,15 @@ func StoreContext(db *sql.DB, content string, sourceType string, forceReingest b
 		return 0, fmt.Errorf("failed to get last insert id: %w", err)
 	}
 
-	// 5. Split into chunks and insert
+	// 6. Link back if superseding
+	if supersedesID != nil {
+		_, err = tx.Exec("UPDATE memories SET superseded_by = ? WHERE id = ?", memoryID, *supersedesID)
+		if err != nil {
+			return 0, fmt.Errorf("failed to link superseded memory: %w", err)
+		}
+	}
+
+	// 7. Split into chunks and insert
 	chunks := Split(content, sourceType)
 	for i, chunkText := range chunks {
 		chunkRes, err := tx.Exec(`
@@ -69,7 +92,7 @@ func StoreContext(db *sql.DB, content string, sourceType string, forceReingest b
 		`, chunkID, chunkText)
 	}
 
-	// 7. Enqueue async tasks (T007)
+	// 8. Enqueue async tasks (T007)
 	_, err = tx.Exec(`
 		INSERT INTO async_tasks (memory_id, task_type, status)
 		VALUES (?, ?, ?)
@@ -86,7 +109,7 @@ func StoreContext(db *sql.DB, content string, sourceType string, forceReingest b
 		return 0, fmt.Errorf("failed to enqueue graph_extract task: %w", err)
 	}
 
-	// 8. Commit
+	// 9. Commit
 	if err := tx.Commit(); err != nil {
 		return 0, fmt.Errorf("failed to commit transaction: %w", err)
 	}

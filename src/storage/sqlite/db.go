@@ -4,48 +4,63 @@ import (
 	"database/sql"
 	"fmt"
 
+	vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
 	"github.com/mattn/go-sqlite3"
 )
 
 func init() {
+	// Automatically load sqlite-vec for all new connections
+	vec.Auto()
+
 	sql.Register("sqlite3_custom", &sqlite3.SQLiteDriver{
 		ConnectHook: func(conn *sqlite3.SQLiteConn) error {
 			// Enable extension loading
 			conn.SetLimit(sqlite3.SQLITE_LIMIT_VARIABLE_NUMBER, 32766)
-			
-			// Load vec0 extension
-			// We try common names for the extension
-			err := conn.LoadExtension("vec0", "sqlite3_vec_init")
-			if err != nil {
-				// Fallback to just "vec0"
-				_ = conn.LoadExtension("vec0", "")
-			}
 			return nil
 		},
 	})
 }
 
 const schema = `
+-- 1. Global configuration metadata
+CREATE TABLE IF NOT EXISTS system_config (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+-- 2. Memory document
 CREATE TABLE IF NOT EXISTS memories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    raw_content TEXT,
-    content_hash TEXT UNIQUE,
-    source_type TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    superseded_by INTEGER REFERENCES memories(id),
-    status TEXT
+    raw_content TEXT NOT NULL,
+    content_hash TEXT NOT NULL,
+    source_type TEXT NOT NULL DEFAULT 'manual',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    superseded_by INTEGER DEFAULT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    FOREIGN KEY(superseded_by) REFERENCES memories(id)
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_active_hash ON memories(content_hash) WHERE status = 'active';
+
+CREATE INDEX IF NOT EXISTS idx_memories_status        ON memories(status);
+CREATE INDEX IF NOT EXISTS idx_memories_superseded_by ON memories(superseded_by);
+
+-- 3. Chunks derived from the document
 CREATE TABLE IF NOT EXISTS memory_chunks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    memory_id INTEGER REFERENCES memories(id),
-    chunk_index INTEGER,
-    chunk_text TEXT,
-    token_estimate INTEGER
+    memory_id INTEGER NOT NULL,
+    chunk_index INTEGER NOT NULL,
+    chunk_text TEXT NOT NULL,
+    token_estimate INTEGER,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(memory_id, chunk_index),
+    FOREIGN KEY(memory_id) REFERENCES memories(id) ON DELETE CASCADE
 );
 
--- FTS5 table for memory chunks
+CREATE INDEX IF NOT EXISTS idx_memory_chunks_memory_id ON memory_chunks(memory_id);
+
+-- 4. Lexical index over chunks (FTS5)
 CREATE VIRTUAL TABLE IF NOT EXISTS memory_chunks_fts USING fts5(
     chunk_text,
     content='memory_chunks',
@@ -53,35 +68,58 @@ CREATE VIRTUAL TABLE IF NOT EXISTS memory_chunks_fts USING fts5(
     tokenize='unicode61 remove_diacritics 2'
 );
 
--- Vector table for memory chunks
+-- 5. Vector index over chunks (sqlite-vec)
 CREATE VIRTUAL TABLE IF NOT EXISTS memory_chunks_vec USING vec0(
     embedding float[768]
 );
 
+-- 6. Asynchronous work queue
 CREATE TABLE IF NOT EXISTS async_tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    memory_id INTEGER REFERENCES memories(id),
-    task_type TEXT,
-    status TEXT,
-    attempt_count INTEGER DEFAULT 0,
-    last_error TEXT,
-    leased_until DATETIME
+    memory_id INTEGER NOT NULL,
+    task_type TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    attempt_count INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT DEFAULT NULL,
+    leased_until DATETIME DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at DATETIME DEFAULT NULL,
+    UNIQUE(memory_id, task_type),
+    FOREIGN KEY(memory_id) REFERENCES memories(id) ON DELETE CASCADE
 );
 
+CREATE INDEX IF NOT EXISTS idx_async_tasks_status_lease ON async_tasks(status, leased_until);
+
+-- 7. Graph node catalog
 CREATE TABLE IF NOT EXISTS kg_nodes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    type TEXT,
-    canonical_name TEXT,
-    display_name TEXT
+    type TEXT NOT NULL,
+    canonical_name TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(type, canonical_name)
 );
 
+CREATE INDEX IF NOT EXISTS idx_kg_nodes_canonical ON kg_nodes(canonical_name);
+
+-- 8. Edge evidence
 CREATE TABLE IF NOT EXISTS kg_edge_evidence (
-    source_node_id INTEGER REFERENCES kg_nodes(id),
-    target_node_id INTEGER REFERENCES kg_nodes(id),
-    relation_type TEXT,
-    memory_id INTEGER REFERENCES memories(id),
-    PRIMARY KEY (source_node_id, target_node_id, memory_id)
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_node_id INTEGER NOT NULL,
+    target_node_id INTEGER NOT NULL,
+    relation_type TEXT NOT NULL,
+    memory_id INTEGER NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(source_node_id, target_node_id, relation_type, memory_id),
+    FOREIGN KEY(source_node_id) REFERENCES kg_nodes(id),
+    FOREIGN KEY(target_node_id) REFERENCES kg_nodes(id),
+    FOREIGN KEY(memory_id) REFERENCES memories(id) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_edge_source    ON kg_edge_evidence(source_node_id);
+CREATE INDEX IF NOT EXISTS idx_edge_target    ON kg_edge_evidence(target_node_id);
+CREATE INDEX IF NOT EXISTS idx_edge_memory    ON kg_edge_evidence(memory_id);
 `
 
 func InitDB(path string) (*sql.DB, error) {

@@ -25,8 +25,16 @@ func (m *mockEmbedder) Dimension() int {
 
 type mockGraphExtractor struct{}
 
-func (m *mockGraphExtractor) ExtractEntities(ctx context.Context, text string) ([]string, error) {
-	return []string{"Entity A", "Entity B"}, nil
+func (m *mockGraphExtractor) ExtractEntities(ctx context.Context, text string) (worker.KnowledgeGraph, error) {
+	return worker.KnowledgeGraph{
+		Nodes: []worker.Node{
+			{Type: "ENTITY", Name: "Entity A"},
+			{Type: "ENTITY", Name: "Entity B"},
+		},
+		Edges: []worker.Edge{
+			{Source: "Entity A", Target: "Entity B", Relation: "DEPENDS_ON"},
+		},
+	}, nil
 }
 
 func TestLeasingLogic(t *testing.T) {
@@ -40,7 +48,7 @@ func TestLeasingLogic(t *testing.T) {
 	defer db.Close()
 
 	// Insert memories for foreign key constraints
-	_, err = db.Exec("INSERT INTO memories (id, raw_content, status) VALUES (1, 'content', 'pending')")
+	_, err = db.Exec("INSERT INTO memories (id, raw_content, content_hash, status) VALUES (1, 'content', 'hash1', 'active')")
 	if err != nil {
 		t.Fatalf("Failed to insert memory: %v", err)
 	}
@@ -110,7 +118,7 @@ func TestWorkerExecution(t *testing.T) {
 	defer db.Close()
 
 	// Setup memory and chunks
-	_, err = db.Exec("INSERT INTO memories (id, raw_content, status) VALUES (1, 'content', 'pending')")
+	_, err = db.Exec("INSERT INTO memories (id, raw_content, content_hash, status) VALUES (1, 'content', 'hash1', 'active')")
 	if err != nil {
 		t.Fatalf("Failed to insert memory: %v", err)
 	}
