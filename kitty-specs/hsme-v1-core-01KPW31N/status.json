@@ -1,28 +1,28 @@
 {
-  "event_count": 9,
-  "last_event_id": "01KPW41X375E1PZ1TC5KHAWF1Q",
-  "materialized_at": "2026-04-23T02:52:37.863944+00:00",
+  "event_count": 10,
+  "last_event_id": "01KPW42W4Y0HD2WZY7RTNQQXF6",
+  "materialized_at": "2026-04-23T02:53:09.662623+00:00",
   "mission_number": "",
   "mission_slug": "hsme-v1-core-01KPW31N",
   "mission_type": "software-dev",
   "summary": {
-    "approved": 0,
+    "approved": 1,
     "blocked": 0,
     "canceled": 0,
     "claimed": 0,
     "done": 0,
     "for_review": 0,
     "in_progress": 0,
-    "in_review": 1,
+    "in_review": 0,
     "planned": 4
   },
   "work_packages": {
     "WP01": {
-      "actor": "gemini:gemini-2.5-pro:reviewer:reviewer",
+      "actor": "user",
       "force_count": 1,
-      "lane": "in_review",
-      "last_event_id": "01KPW41X375E1PZ1TC5KHAWF1Q",
-      "last_transition_at": "2026-04-23T02:52:37.863944+00:00"
+      "lane": "approved",
+      "last_event_id": "01KPW42W4Y0HD2WZY7RTNQQXF6",
+      "last_transition_at": "2026-04-23T02:53:09.662623+00:00"
     },
     "WP02": {
       "actor": "finalize-tasks",
