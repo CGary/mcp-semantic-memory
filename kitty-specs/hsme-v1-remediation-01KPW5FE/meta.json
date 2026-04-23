@@ -8,5 +8,7 @@
   "purpose_context": "Address the missing Worker, Search, and MCP layers, remove SQLite FTS5 triggers as per spec, and ensure module tests compile.",
   "purpose_tldr": "Fix critical drift and missing implementation from V1 Core",
   "slug": "hsme-v1-remediation-01KPW5FE",
-  "target_branch": "master"
+  "target_branch": "master",
+  "vcs": "git",
+  "vcs_locked_at": "2026-04-23T03:24:37.918648+00:00"
 }
