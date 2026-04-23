@@ -6,7 +6,7 @@
 ## Subtask Index
 | ID | Description | WP | Parallel |
 |---|---|---|---|
-| T001 | Remove implicit FTS5 triggers from SQLite schema | WP01 | | [D] |
+| T001 | Remove implicit FTS5 triggers from SQLite schema | WP01 | | [D] | [D] |
 | T002 | Verify `ingest.go` explicitly syncs FTS5 | WP01 | | [D] |
 | T003 | Create `src/core/worker` module and implement leasing loop | WP02 | [D] |
 | T004 | Create `src/core/search` module and implement RRF | WP02 | [D] |
