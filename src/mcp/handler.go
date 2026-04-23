@@ -5,20 +5,27 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 )
 
 type JSONRPCRequest struct {
 	JSONRPC string          `json:"jsonrpc"`
-	ID      interface{}     `json:"id"`
+	ID      json.RawMessage `json:"id,omitempty"`
 	Method  string          `json:"method"`
-	Params  json.RawMessage `json:"params"`
+	Params  json.RawMessage `json:"params,omitempty"`
 }
 
 type JSONRPCResponse struct {
-	JSONRPC string      `json:"jsonrpc"`
-	ID      interface{} `json:"id"`
-	Result  interface{} `json:"result,omitempty"`
-	Error   interface{} `json:"error,omitempty"`
+	JSONRPC string          `json:"jsonrpc"`
+	ID      json.RawMessage `json:"id,omitempty"`
+	Result  interface{}     `json:"result,omitempty"`
+	Error   *JSONRPCError   `json:"error,omitempty"`
+}
+
+type JSONRPCError struct {
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
 }
 
 type Tool struct {
@@ -27,42 +34,60 @@ type Tool struct {
 	InputSchema interface{} `json:"inputSchema"`
 }
 
-type CallToolParams struct {
-	Name      string          `json:"name"`
-	Arguments json.RawMessage `json:"arguments"`
+type Server struct {
+	tools      map[string]ToolDefinition
+	writeMutex sync.Mutex
 }
 
-type Server struct {
-	tools map[string]func(json.RawMessage) (interface{}, error)
+type ToolDefinition struct {
+	Tool    Tool
+	Handler func(json.RawMessage) (interface{}, error)
 }
 
 func NewServer() *Server {
 	return &Server{
-		tools: make(map[string]func(json.RawMessage) (interface{}, error)),
+		tools: make(map[string]ToolDefinition),
 	}
 }
 
-func (s *Server) RegisterTool(name string, handler func(json.RawMessage) (interface{}, error)) {
-	s.tools[name] = handler
+func (s *Server) RegisterTool(name string, description string, schema interface{}, handler func(json.RawMessage) (interface{}, error)) {
+	s.tools[name] = ToolDefinition{
+		Tool: Tool{
+			Name:        name,
+			Description: description,
+			InputSchema: schema,
+		},
+		Handler: handler,
+	}
 }
 
 func (s *Server) Serve() {
+	fmt.Fprintf(os.Stderr, "HSME MCP server starting...\n")
 	decoder := json.NewDecoder(os.Stdin)
 	for {
 		var req JSONRPCRequest
 		if err := decoder.Decode(&req); err != nil {
 			if err == io.EOF {
-				break
+				return
 			}
 			fmt.Fprintf(os.Stderr, "Error decoding request: %v\n", err)
 			continue
 		}
 
-		go s.handleRequest(req)
+		s.handleRequest(req)
 	}
 }
 
+func (s *Server) sendResponse(resp JSONRPCResponse) {
+	s.writeMutex.Lock()
+	defer s.writeMutex.Unlock()
+	json.NewEncoder(os.Stdout).Encode(resp)
+}
+
 func (s *Server) handleRequest(req JSONRPCRequest) {
+	// Notifications (id is null) do not expect a response
+	isNotification := req.ID == nil || string(req.ID) == "null"
+
 	var resp JSONRPCResponse
 	resp.JSONRPC = "2.0"
 	resp.ID = req.ID
@@ -73,79 +98,33 @@ func (s *Server) handleRequest(req JSONRPCRequest) {
 			"protocolVersion": "2024-11-05",
 			"capabilities":    map[string]interface{}{},
 			"serverInfo": map[string]interface{}{
-				"name":    "hsme-server",
+				"name":    "hsme",
 				"version": "1.0.0",
 			},
 		}
-	case "tools/list":
+	case "notifications/initialized":
+		fmt.Fprintf(os.Stderr, "Client initialized\n")
+		return
+	case "tools/list", "list_tools":
 		var tools []Tool
-		// Define tool descriptions here or pass them in
-		tools = append(tools, Tool{
-			Name:        "store_context",
-			Description: "Store technical context in memory",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"content":     map[string]string{"type": "string"},
-					"source_type": map[string]string{"type": "string"},
-				},
-				"required": []string{"content", "source_type"},
-			},
-		})
-		tools = append(tools, Tool{
-			Name:        "search_fuzzy",
-			Description: "Search memory using fuzzy matching",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"query": map[string]string{"type": "string"},
-					"limit": map[string]string{"type": "integer"},
-				},
-				"required": []string{"query"},
-			},
-		})
-		tools = append(tools, Tool{
-			Name:        "search_exact",
-			Description: "Search memory using exact keyword matching",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"keyword": map[string]string{"type": "string"},
-					"limit":   map[string]string{"type": "integer"},
-				},
-				"required": []string{"keyword"},
-			},
-		})
-		tools = append(tools, Tool{
-			Name:        "trace_dependencies",
-			Description: "Trace entity dependencies in the knowledge graph",
-			InputSchema: map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"entity_name": map[string]string{"type": "string"},
-					"direction":   map[string]string{"type": "string"},
-				},
-				"required": []string{"entity_name"},
-			},
-		})
+		for _, def := range s.tools {
+			tools = append(tools, def.Tool)
+		}
 		resp.Result = map[string]interface{}{
 			"tools": tools,
 		}
-	case "tools/call":
-		var params CallToolParams
+	case "tools/call", "call_tool":
+		var params struct {
+			Name      string          `json:"name"`
+			Arguments json.RawMessage `json:"arguments"`
+		}
 		if err := json.Unmarshal(req.Params, &params); err != nil {
-			resp.Error = map[string]interface{}{
-				"code":    -32602,
-				"message": "Invalid params",
-			}
+			resp.Error = &JSONRPCError{Code: -32602, Message: "Invalid params"}
 		} else {
-			if handler, ok := s.tools[params.Name]; ok {
-				result, err := handler(params.Arguments)
+			if def, ok := s.tools[params.Name]; ok {
+				result, err := def.Handler(params.Arguments)
 				if err != nil {
-					resp.Error = map[string]interface{}{
-						"code":    -32000,
-						"message": err.Error(),
-					}
+					resp.Error = &JSONRPCError{Code: -32000, Message: err.Error()}
 				} else {
 					resp.Result = map[string]interface{}{
 						"content": []interface{}{
@@ -157,20 +136,19 @@ func (s *Server) handleRequest(req JSONRPCRequest) {
 					}
 				}
 			} else {
-				resp.Error = map[string]interface{}{
-					"code":    -32601,
-					"message": "Tool not found",
-				}
+				resp.Error = &JSONRPCError{Code: -32601, Message: "Tool not found"}
 			}
 		}
 	default:
-		resp.Error = map[string]interface{}{
-			"code":    -32601,
-			"message": "Method not found",
+		if isNotification {
+			return
 		}
+		resp.Error = &JSONRPCError{Code: -32601, Message: fmt.Sprintf("Method not found: %s", req.Method)}
 	}
 
-	json.NewEncoder(os.Stdout).Encode(resp)
+	if !isNotification {
+		s.sendResponse(resp)
+	}
 }
 
 func formatResult(v interface{}) string {

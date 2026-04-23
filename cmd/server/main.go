@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -64,71 +63,122 @@ func main() {
 	srv := mcp.NewServer()
 
 	// Register tools
-	srv.RegisterTool("store_context", func(params json.RawMessage) (interface{}, error) {
-		var args struct {
-			Content            string `json:"content"`
-			SourceType         string `json:"source_type"`
-			SupersedesMemoryID *int64 `json:"supersedes_memory_id"`
-			ForceReingest      bool   `json:"force_reingest"`
-		}
-		if err := json.Unmarshal(params, &args); err != nil {
-			return nil, err
-		}
-		id, err := indexer.StoreContext(db, args.Content, args.SourceType, args.SupersedesMemoryID, args.ForceReingest)
-		if err != nil {
-			return nil, err
-		}
-		return map[string]interface{}{
-			"memory_id": id,
-			"status":    "stored",
-		}, nil
-	})
+	srv.RegisterTool(
+		"store_context",
+		"Store technical context in memory",
+		map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"content":              map[string]interface{}{"type": "string"},
+				"source_type":          map[string]interface{}{"type": "string"},
+				"supersedes_memory_id": map[string]interface{}{"type": "integer"},
+				"force_reingest":       map[string]interface{}{"type": "boolean"},
+			},
+			"required": []string{"content", "source_type"},
+		},
+		func(params json.RawMessage) (interface{}, error) {
+			var args struct {
+				Content            string `json:"content"`
+				SourceType         string `json:"source_type"`
+				SupersedesMemoryID *int64 `json:"supersedes_memory_id"`
+				ForceReingest      bool   `json:"force_reingest"`
+			}
+			if err := json.Unmarshal(params, &args); err != nil {
+				return nil, err
+			}
+			id, err := indexer.StoreContext(db, args.Content, args.SourceType, args.SupersedesMemoryID, args.ForceReingest)
+			if err != nil {
+				return nil, err
+			}
+			return map[string]interface{}{
+				"memory_id": id,
+				"status":    "stored",
+			}, nil
+		},
+	)
 
-	srv.RegisterTool("search_fuzzy", func(params json.RawMessage) (interface{}, error) {
-		var args struct {
-			Query string `json:"query"`
-			Limit int    `json:"limit"`
-		}
-		if err := json.Unmarshal(params, &args); err != nil {
-			return nil, err
-		}
-		if args.Limit == 0 {
-			args.Limit = 10
-		}
-		return search.FuzzySearch(ctx, db, embedder, args.Query, args.Limit)
-	})
+	srv.RegisterTool(
+		"search_fuzzy",
+		"Search memory using hybrid fuzzy matching (Lexical + Semantic)",
+		map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"query": map[string]interface{}{"type": "string"},
+				"limit": map[string]interface{}{"type": "integer"},
+			},
+			"required": []string{"query"},
+		},
+		func(params json.RawMessage) (interface{}, error) {
+			var args struct {
+				Query string `json:"query"`
+				Limit int    `json:"limit"`
+			}
+			if err := json.Unmarshal(params, &args); err != nil {
+				return nil, err
+			}
+			if args.Limit == 0 {
+				args.Limit = 10
+			}
+			return search.FuzzySearch(ctx, db, embedder, args.Query, args.Limit)
+		},
+	)
 
-	srv.RegisterTool("search_exact", func(params json.RawMessage) (interface{}, error) {
-		var args struct {
-			Keyword string `json:"keyword"`
-			Limit   int    `json:"limit"`
-		}
-		if err := json.Unmarshal(params, &args); err != nil {
-			return nil, err
-		}
-		if args.Limit == 0 {
-			args.Limit = 10
-		}
-		return search.ExactSearch(ctx, db, args.Keyword, args.Limit)
-	})
+	srv.RegisterTool(
+		"search_exact",
+		"Search memory using exact keyword matching",
+		map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"keyword": map[string]interface{}{"type": "string"},
+				"limit":   map[string]interface{}{"type": "integer"},
+			},
+			"required": []string{"keyword"},
+		},
+		func(params json.RawMessage) (interface{}, error) {
+			var args struct {
+				Keyword string `json:"keyword"`
+				Limit   int    `json:"limit"`
+			}
+			if err := json.Unmarshal(params, &args); err != nil {
+				return nil, err
+			}
+			if args.Limit == 0 {
+				args.Limit = 10
+			}
+			return search.ExactSearch(ctx, db, args.Keyword, args.Limit)
+		},
+	)
 
-	srv.RegisterTool("trace_dependencies", func(params json.RawMessage) (interface{}, error) {
-		var args struct {
-			EntityName string `json:"entity_name"`
-			Direction  string `json:"direction"`
-			MaxDepth   int    `json:"max_depth"`
-		}
-		if err := json.Unmarshal(params, &args); err != nil {
-			return nil, err
-		}
-		if args.MaxDepth == 0 {
-			args.MaxDepth = 3
-		}
-		if args.Direction == "" {
-			args.Direction = "both"
-		}
-		return search.TraceDependencies(ctx, db, args.EntityName, args.Direction, args.MaxDepth)
-	})
+	srv.RegisterTool(
+		"trace_dependencies",
+		"Trace entity dependencies in the knowledge graph",
+		map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"entity_name": map[string]interface{}{"type": "string"},
+				"direction":   map[string]interface{}{"type": "string", "enum": []string{"downstream", "upstream", "both"}},
+				"max_depth":   map[string]interface{}{"type": "integer"},
+			},
+			"required": []string{"entity_name"},
+		},
+		func(params json.RawMessage) (interface{}, error) {
+			var args struct {
+				EntityName string `json:"entity_name"`
+				Direction  string `json:"direction"`
+				MaxDepth   int    `json:"max_depth"`
+			}
+			if err := json.Unmarshal(params, &args); err != nil {
+				return nil, err
+			}
+			if args.MaxDepth == 0 {
+				args.MaxDepth = 3
+			}
+			if args.Direction == "" {
+				args.Direction = "both"
+			}
+			return search.TraceDependencies(ctx, db, args.EntityName, args.Direction, args.MaxDepth)
+		},
+	)
 
 	// Handle signals for graceful shutdown
 	sigChan := make(chan os.Signal, 1)
@@ -140,6 +190,5 @@ func main() {
 	}()
 
 	// Start MCP server loop
-	fmt.Fprintf(os.Stderr, "MCP server starting...\n")
 	srv.Serve()
 }
