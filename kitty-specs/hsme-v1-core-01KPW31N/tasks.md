@@ -6,9 +6,9 @@
 ## Subtask Index
 | ID | Description | WP | Parallel |
 |---|---|---|---|
-| T001 | Setup go project and define core models | WP01 | |
-| T002 | Create test stubs for the storage engine (BDD tests first) | WP01 | |
-| T003 | Implement the SQLite schema initialization (WAL, vec0, fts5) | WP01 | |
+| T001 | Setup go project and define core models | WP01 | | [D] |
+| T002 | Create test stubs for the storage engine (BDD tests first) | WP01 | | [D] |
+| T003 | Implement the SQLite schema initialization (WAL, vec0, fts5) | WP01 | | [D] |
 | T004 | Create chunker and deduplication block tests | WP02 | |
 | T005 | Implement content hashing and chunking logic | WP02 | |
 | T006 | Implement `store_context` ingestion logic | WP02 | |
@@ -30,9 +30,9 @@
 **Prompt**: `tasks/WP01-foundation-db.md` (~250 lines)
 **Dependencies**: None
 **Included Subtasks**:
-- [ ] T001 Setup go project and define core models (WP01)
-- [ ] T002 Create test stubs for the storage engine (BDD tests first) (WP01)
-- [ ] T003 Implement the SQLite schema initialization (WAL, vec0, fts5) (WP01)
+- [x] T001 Setup go project and define core models (WP01)
+- [x] T002 Create test stubs for the storage engine (BDD tests first) (WP01)
+- [x] T003 Implement the SQLite schema initialization (WAL, vec0, fts5) (WP01)
 
 ## WP02: Indexer Core
 **Goal**: Implement the synchronous ingestion path (`store_context` logic) including hashing, deduplication, chunking, and FTS5 synchronization.
