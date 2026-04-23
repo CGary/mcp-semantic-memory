@@ -1,108 +1,57 @@
-# Implementation Plan: [FEATURE]
-*Path: [templates/plan-template.md](templates/plan-template.md)*
+# Implementation Plan: HSME V1 Core
 
-
-**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
-**Input**: Feature specification from `/kitty-specs/[###-feature-name]/spec.md`
-
-**Note**: This template is filled in by the `/spec-kitty.plan` command. See `src/specify_cli/missions/software-dev/command-templates/plan.md` for the execution workflow.
-
-The planner will not begin until all planning questions have been answered—capture those answers in this document before progressing to later phases.
+**Branch**: `hsme-v1-core-01KPW31N` | **Date**: 2026-04-23 | **Spec**: [spec.md](spec.md)
+**Input**: Feature specification from `/kitty-specs/hsme-v1-core-01KPW31N/spec.md`
 
 ## Summary
-
-[Extract from feature spec: primary requirement + technical approach from research]
+Implement V1 of the Hybrid Semantic Memory Engine (HSME), a local MCP server that stores, chunks, and hybrid-searches technical context using SQLite, FTS5, and the `vec0` vector extension. It runs an in-process async worker to enrich ingested documents with embeddings and knowledge graph relations.
 
 ## Technical Context
 
-<!--
-  ACTION REQUIRED: Replace the content in this section with the technical details
-  for the project. The structure here is presented in advisory capacity to guide
-  the iteration process.
--->
-
-**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
-**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
-**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
-**Testing**: [Project-specific test approach or NEEDS CLARIFICATION]
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
-**Project Type**: [single/web/mobile - determines source structure]  
-**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
-**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
-**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
+**Language/Version**: Go 1.22+ (requires CGO)
+**Primary Dependencies**: `github.com/mattn/go-sqlite3`, `vec0` (dynamic extension)
+**Storage**: SQLite (WAL mode enforced)
+**Testing**: BDD / Module-level tests (No strict TDD). Tests validate business blocks (ingestion, RRF search, worker leasing) before underlying code implementation.
+**Target Platform**: Linux (Debian slim / Ubuntu minimal for glibc compatibility with `vec0`)
+**Project Type**: single/cli (MCP server via stdio)
+**Performance Goals**: `< 1 second` for `store_context` (fast ingestion path)
+**Constraints**: Dynamic extension loading requires CGO; pure Go SQLite drivers cannot be used.
+**Scale/Scope**: Local agent persistent memory storage.
 
 ## Charter Check
-
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
-
-[Gates determined based on charter file]
+*Skipped: No charter file found.*
 
 ## Project Structure
 
 ### Documentation (this feature)
-
 ```
-kitty-specs/[###-feature]/
-├── plan.md              # This file (/spec-kitty.plan command output)
-├── research.md          # Phase 0 output (/spec-kitty.plan command)
-├── data-model.md        # Phase 1 output (/spec-kitty.plan command)
-├── quickstart.md        # Phase 1 output (/spec-kitty.plan command)
-├── contracts/           # Phase 1 output (/spec-kitty.plan command)
-└── tasks.md             # Phase 2 output (/spec-kitty.tasks command - NOT created by /spec-kitty.plan)
+kitty-specs/hsme-v1-core-01KPW31N/
+├── plan.md              # This file
+├── research.md          # Phase 0 output
+├── data-model.md        # Phase 1 output
+├── quickstart.md        # Phase 1 output
+├── contracts/           # Phase 1 output
+└── tasks.md             # Phase 2 output (generated via spec-kitty.tasks)
 ```
 
 ### Source Code (repository root)
-<!--
-  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
-  for this feature. Delete unused options and expand the chosen structure with
-  real paths (e.g., apps/admin, packages/something). The delivered plan must
-  not include Option labels.
--->
-
 ```
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
 src/
-├── models/
-├── services/
-├── cli/
-└── lib/
-
-tests/
-├── contract/
-├── integration/
-└── unit/
-
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
-backend/
-├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
+├── core/
+│   ├── indexer/       # Chunking, Hash, Deduplication
+│   ├── worker/        # Async leasing, embedding, graph extraction
+│   ├── search/        # RRF logic, FTS5 + vec0 querying
+│   └── models/        # Go structs corresponding to SQLite schema
+├── storage/
+│   └── sqlite/        # DB initialization, migrations, queries
+├── mcp/
+│   ├── handlers/      # store_context, search_fuzzy, trace_dependencies
+│   └── server/        # Stdio MCP server lifecycle
 └── tests/
-
-frontend/
-├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
-└── tests/
-
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
-
-ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
+    └── modules/       # BDD / block-level tests
 ```
 
-**Structure Decision**: [Document the selected structure and reference the real
-directories captured above]
+**Structure Decision**: Go standard layout adapted for a single MCP server application with clear boundaries between the MCP transport layer, business logic (core), and persistence (storage).
 
 ## Complexity Tracking
-
-*Fill ONLY if Charter Check has violations that must be justified*
-
-| Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
-| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
+*N/A - Charter check skipped.*
