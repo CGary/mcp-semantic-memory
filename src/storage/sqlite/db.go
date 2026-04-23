@@ -53,20 +53,6 @@ CREATE VIRTUAL TABLE IF NOT EXISTS memory_chunks_fts USING fts5(
     tokenize='unicode61 remove_diacritics 2'
 );
 
--- Trigger to keep FTS index updated
-CREATE TRIGGER IF NOT EXISTS memory_chunks_ai AFTER INSERT ON memory_chunks BEGIN
-  INSERT INTO memory_chunks_fts(rowid, chunk_text) VALUES (new.id, new.chunk_text);
-END;
-
-CREATE TRIGGER IF NOT EXISTS memory_chunks_ad AFTER DELETE ON memory_chunks BEGIN
-  INSERT INTO memory_chunks_fts(memory_chunks_fts, rowid, chunk_text) VALUES('delete', old.id, old.chunk_text);
-END;
-
-CREATE TRIGGER IF NOT EXISTS memory_chunks_au AFTER UPDATE ON memory_chunks BEGIN
-  INSERT INTO memory_chunks_fts(memory_chunks_fts, rowid, chunk_text) VALUES('delete', old.id, old.chunk_text);
-  INSERT INTO memory_chunks_fts(rowid, chunk_text) VALUES (new.id, new.chunk_text);
-END;
-
 -- Vector table for memory chunks
 CREATE VIRTUAL TABLE IF NOT EXISTS memory_chunks_vec USING vec0(
     embedding float[768]
