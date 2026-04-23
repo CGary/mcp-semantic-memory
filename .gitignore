@@ -1,16 +1,26 @@
-# Binarios
+# Binarios y ejecutables
 hsme
 bin/
 *.exe
+*.so
+*.dll
 
-# Bases de datos y archivos de estado (Privados)
+# BASES DE DATOS (PROTECCIÓN TOTAL)
 *.db
 *.db-shm
 *.db-wal
 data/
+**/data/*.db
 engram.db*
 
-# Infraestructura y temporales
+# Scripts de prueba con datos sensibles
+scripts/diag_db.go
+scripts/ingest_spec.go
+scripts/massive_ingest.go
+scripts/test_search.go
+
+# Temporales y logs
 .worktrees/
 tmp/
 *.log
+.DS_Store
