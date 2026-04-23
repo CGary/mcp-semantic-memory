@@ -8,9 +8,9 @@
 |---|---|---|---|
 | T001 | Remove implicit FTS5 triggers from SQLite schema | WP01 | | [D] |
 | T002 | Verify `ingest.go` explicitly syncs FTS5 | WP01 | | [D] |
-| T003 | Create `src/core/worker` module and implement leasing loop | WP02 | [P] |
-| T004 | Create `src/core/search` module and implement RRF | WP02 | [P] |
-| T005 | Ensure `tests/modules/worker_test.go` and `search_test.go` compile and pass | WP02 | [P] |
+| T003 | Create `src/core/worker` module and implement leasing loop | WP02 | [D] |
+| T004 | Create `src/core/search` module and implement RRF | WP02 | [D] |
+| T005 | Ensure `tests/modules/worker_test.go` and `search_test.go` compile and pass | WP02 | [D] |
 | T006 | Create `cmd/server/main.go` MCP stdio entry point | WP03 | |
 | T007 | Register all 4 MCP tools mapping to core modules | WP03 | |
 
@@ -28,9 +28,9 @@
 **Dependencies**: None
 **Parallel Opportunities**: Can run alongside WP01.
 **Included Subtasks**:
-- [ ] T003 Create `src/core/worker` module and implement leasing loop (WP02)
-- [ ] T004 Create `src/core/search` module and implement RRF (WP02)
-- [ ] T005 Ensure `tests/modules/worker_test.go` and `search_test.go` compile and pass (WP02)
+- [x] T003 Create `src/core/worker` module and implement leasing loop (WP02)
+- [x] T004 Create `src/core/search` module and implement RRF (WP02)
+- [x] T005 Ensure `tests/modules/worker_test.go` and `search_test.go` compile and pass (WP02)
 
 ## WP03: MCP Transport Layer
 **Goal**: Implement the missing `mcp` package and the main entry point to expose the tools.
