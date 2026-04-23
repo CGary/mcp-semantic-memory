@@ -21,9 +21,9 @@
 | T013 | Implement Reciprocal Rank Fusion (FTS5 + Vec0) | WP04 | [P] |
 | T014 | Create graph traversal block tests | WP04 | [P] |
 | T015 | Implement `trace_dependencies` recursive CTE traversal logic | WP04 | [P] |
-| T016 | Setup stdio MCP server skeleton | WP05 | |
-| T017 | Register `store_context` and `search_fuzzy` handlers | WP05 | |
-| T018 | Register `search_exact` and `trace_dependencies` handlers | WP05 | |
+| T016 | Setup stdio MCP server skeleton | WP05 | | [D] |
+| T017 | Register `store_context` and `search_fuzzy` handlers | WP05 | | [D] |
+| T018 | Register `search_exact` and `trace_dependencies` handlers | WP05 | | [D] |
 
 ## WP01: Foundation & DB Setup
 **Goal**: Initialize the Go project, define core entities, and implement the SQLite storage engine initialization with its schema.
@@ -70,6 +70,6 @@
 **Prompt**: `tasks/WP05-mcp-layer.md` (~200 lines)
 **Dependencies**: WP02, WP03, WP04
 **Included Subtasks**:
-- [ ] T016 Setup stdio MCP server skeleton (WP05)
-- [ ] T017 Register `store_context` and `search_fuzzy` handlers (WP05)
-- [ ] T018 Register `search_exact` and `trace_dependencies` handlers (WP05)
+- [x] T016 Setup stdio MCP server skeleton (WP05)
+- [x] T017 Register `store_context` and `search_fuzzy` handlers (WP05)
+- [x] T018 Register `search_exact` and `trace_dependencies` handlers (WP05)
