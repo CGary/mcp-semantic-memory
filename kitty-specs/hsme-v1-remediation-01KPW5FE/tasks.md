@@ -11,8 +11,8 @@
 | T003 | Create `src/core/worker` module and implement leasing loop | WP02 | [D] |
 | T004 | Create `src/core/search` module and implement RRF | WP02 | [D] |
 | T005 | Ensure `tests/modules/worker_test.go` and `search_test.go` compile and pass | WP02 | [D] |
-| T006 | Create `cmd/server/main.go` MCP stdio entry point | WP03 | |
-| T007 | Register all 4 MCP tools mapping to core modules | WP03 | |
+| T006 | Create `cmd/server/main.go` MCP stdio entry point | WP03 | | [D] |
+| T007 | Register all 4 MCP tools mapping to core modules | WP03 | | [D] |
 
 ## WP01: Fix DB Initialization
 **Goal**: Remove the SQLite triggers that violate the architecture decision for explicit FTS5 synchronization.
@@ -37,5 +37,5 @@
 **Prompt**: `tasks/WP03-mcp-layer.md` (~150 lines)
 **Dependencies**: WP02
 **Included Subtasks**:
-- [ ] T006 Create `cmd/server/main.go` MCP stdio entry point (WP03)
-- [ ] T007 Register all 4 MCP tools mapping to core modules (WP03)
+- [x] T006 Create `cmd/server/main.go` MCP stdio entry point (WP03)
+- [x] T007 Register all 4 MCP tools mapping to core modules (WP03)
