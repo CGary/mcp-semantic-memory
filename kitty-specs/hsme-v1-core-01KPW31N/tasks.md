@@ -13,10 +13,10 @@
 | T005 | Implement content hashing and chunking logic | WP02 | | [D] |
 | T006 | Implement `store_context` ingestion logic | WP02 | | [D] |
 | T007 | Enqueue async tasks on ingestion | WP02 | | [D] |
-| T008 | Create worker block tests (leasing, retry counts) | WP03 | [P] |
-| T009 | Define Embedder and GraphExtractor interfaces | WP03 | [P] |
-| T010 | Implement polling worker logic | WP03 | [P] |
-| T011 | Implement `embed` and `graph_extract` execution | WP03 | [P] |
+| T008 | Create worker block tests (leasing, retry counts) | WP03 | [D] |
+| T009 | Define Embedder and GraphExtractor interfaces | WP03 | [D] |
+| T010 | Implement polling worker logic | WP03 | [D] |
+| T011 | Implement `embed` and `graph_extract` execution | WP03 | [D] |
 | T012 | Create search block tests (RRF scoring logic) | WP04 | [P] |
 | T013 | Implement Reciprocal Rank Fusion (FTS5 + Vec0) | WP04 | [P] |
 | T014 | Create graph traversal block tests | WP04 | [P] |
@@ -50,10 +50,10 @@
 **Dependencies**: WP01
 **Parallel Opportunities**: Can be worked on parallel to WP02 (depends only on DB schema).
 **Included Subtasks**:
-- [ ] T008 Create worker block tests (leasing, retry counts) (WP03)
-- [ ] T009 Define Embedder and GraphExtractor interfaces (WP03)
-- [ ] T010 Implement polling worker logic (WP03)
-- [ ] T011 Implement `embed` and `graph_extract` execution (WP03)
+- [x] T008 Create worker block tests (leasing, retry counts) (WP03)
+- [x] T009 Define Embedder and GraphExtractor interfaces (WP03)
+- [x] T010 Implement polling worker logic (WP03)
+- [x] T011 Implement `embed` and `graph_extract` execution (WP03)
 
 ## WP04: Search & Graph Traversal
 **Goal**: Implement the hybrid semantic search using Reciprocal Rank Fusion (RRF) and the recursive graph traversal for dependencies.
