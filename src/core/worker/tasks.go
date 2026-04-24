@@ -7,7 +7,18 @@ import (
 	"time"
 
 	vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
+	"github.com/hsme/core/src/core/indexer"
 )
+
+// Enums del extractor — cualquier cosa fuera de esto se descarta.
+// Spec §14.4 define estos valores; phi3.5 a veces emite el literal del
+// prompt (ej. "TECH|ERROR|FILE|CMD") como si fuera un tipo válido.
+var allowedNodeTypes = map[string]struct{}{
+	"TECH": {}, "ERROR": {}, "FILE": {}, "CMD": {},
+}
+var allowedRelationTypes = map[string]struct{}{
+	"DEPENDS_ON": {}, "RESOLVES": {}, "CAUSES": {},
+}
 
 type AsyncTask struct {
 	ID           int64
@@ -22,6 +33,7 @@ type AsyncTask struct {
 type Embedder interface {
 	GenerateVector(ctx context.Context, text string) ([]float32, error)
 	Dimension() int
+	ModelID() string
 }
 
 type Node struct {
@@ -145,34 +157,49 @@ func (w *Worker) ExecuteTask(ctx context.Context, task *AsyncTask) error {
 			return fmt.Errorf("failed to extract entities: %w", err)
 		}
 
-		// Map to store name -> id for resolving edges
+		// Map original-name → node id para resolver edges. Usamos el nombre CRUDO
+		// del extractor como key porque los edges vienen con esos mismos literales.
 		nodeIDs := make(map[string]int64)
 
 		for _, node := range kg.Nodes {
+			nodeType := indexer.CanonicalizeType(node.Type)
+			if _, ok := allowedNodeTypes[nodeType]; !ok {
+				// phi3.5 a veces emite basura tipo "TECH|ERROR|FILE|CMD". Descartamos.
+				continue
+			}
+			canonical, display := indexer.CanonicalizeName(node.Name)
+			if canonical == "" {
+				continue
+			}
+
 			var nodeID int64
 			err := w.db.QueryRowContext(ctx, `
-				INSERT INTO kg_nodes(type, canonical_name, display_name) 
-				VALUES(?, ?, ?) 
-				ON CONFLICT(type, canonical_name) 
-				DO UPDATE SET display_name=excluded.display_name 
+				INSERT INTO kg_nodes(type, canonical_name, display_name)
+				VALUES(?, ?, ?)
+				ON CONFLICT(type, canonical_name)
+				DO UPDATE SET display_name=excluded.display_name
 				RETURNING id`,
-				node.Type, node.Name, node.Name).Scan(&nodeID)
+				nodeType, canonical, display).Scan(&nodeID)
 			if err != nil {
-				// Fallback if RETURNING is not supported or other error
-				_, _ = w.db.ExecContext(ctx, "INSERT OR IGNORE INTO kg_nodes(type, canonical_name, display_name) VALUES(?, ?, ?)", node.Type, node.Name, node.Name)
-				_ = w.db.QueryRowContext(ctx, "SELECT id FROM kg_nodes WHERE type = ? AND canonical_name = ?", node.Type, node.Name).Scan(&nodeID)
+				// Fallback si RETURNING no está disponible por alguna razón
+				_, _ = w.db.ExecContext(ctx, "INSERT OR IGNORE INTO kg_nodes(type, canonical_name, display_name) VALUES(?, ?, ?)", nodeType, canonical, display)
+				_ = w.db.QueryRowContext(ctx, "SELECT id FROM kg_nodes WHERE type = ? AND canonical_name = ?", nodeType, canonical).Scan(&nodeID)
 			}
 			nodeIDs[node.Name] = nodeID
 		}
 
 		for _, edge := range kg.Edges {
+			relation := indexer.CanonicalizeType(edge.Relation)
+			if _, ok := allowedRelationTypes[relation]; !ok {
+				continue
+			}
 			sourceID, okS := nodeIDs[edge.Source]
 			targetID, okT := nodeIDs[edge.Target]
 			if okS && okT {
 				_, _ = w.db.ExecContext(ctx, `
-					INSERT OR IGNORE INTO kg_edge_evidence(source_node_id, target_node_id, relation_type, memory_id) 
+					INSERT OR IGNORE INTO kg_edge_evidence(source_node_id, target_node_id, relation_type, memory_id)
 					VALUES(?, ?, ?, ?)`,
-					sourceID, targetID, edge.Relation, task.MemoryID)
+					sourceID, targetID, relation, task.MemoryID)
 			}
 		}
 	}

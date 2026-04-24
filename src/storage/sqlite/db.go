@@ -3,6 +3,7 @@ package sqlite
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
 	"github.com/mattn/go-sqlite3"
@@ -68,6 +69,22 @@ CREATE VIRTUAL TABLE IF NOT EXISTS memory_chunks_fts USING fts5(
     tokenize='unicode61 remove_diacritics 2'
 );
 
+-- 4.a Triggers de sincronización memory_chunks <-> memory_chunks_fts.
+-- Sin esto, cualquier UPDATE o DELETE sobre memory_chunks deja el índice léxico
+-- desincronizado y el FTS devuelve resultados fantasma o pierde filas.
+CREATE TRIGGER IF NOT EXISTS memory_chunks_ai AFTER INSERT ON memory_chunks BEGIN
+    INSERT INTO memory_chunks_fts(rowid, chunk_text) VALUES (new.id, new.chunk_text);
+END;
+
+CREATE TRIGGER IF NOT EXISTS memory_chunks_ad AFTER DELETE ON memory_chunks BEGIN
+    INSERT INTO memory_chunks_fts(memory_chunks_fts, rowid, chunk_text) VALUES ('delete', old.id, old.chunk_text);
+END;
+
+CREATE TRIGGER IF NOT EXISTS memory_chunks_au AFTER UPDATE ON memory_chunks BEGIN
+    INSERT INTO memory_chunks_fts(memory_chunks_fts, rowid, chunk_text) VALUES ('delete', old.id, old.chunk_text);
+    INSERT INTO memory_chunks_fts(rowid, chunk_text) VALUES (new.id, new.chunk_text);
+END;
+
 -- 5. Vector index over chunks (sqlite-vec)
 CREATE VIRTUAL TABLE IF NOT EXISTS memory_chunks_vec USING vec0(
     embedding float[768]
@@ -123,10 +140,23 @@ CREATE INDEX IF NOT EXISTS idx_edge_memory    ON kg_edge_evidence(memory_id);
 `
 
 func InitDB(path string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite3_custom", path)
+	// _txlock=immediate hace que BeginTx emita BEGIN IMMEDIATE en vez de BEGIN DEFERRED.
+	// Con eso el write-lock se toma upfront y las escrituras concurrentes (ej. dos
+	// store_context con el mismo contenido) serializan limpias en vez de colisionar
+	// en el unique index al commit.
+	dsn := fmt.Sprintf("file:%s?_txlock=immediate", path)
+	db, err := sql.Open("sqlite3_custom", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
+
+	// Acotar el pool de conexiones. Con MaxOpenConns ilimitado y goroutines
+	// concurrentes (ver mcp/handler.go: `go s.handleRequest`), SQLite bajo WAL
+	// puede devolver `database is locked` cuando muchas conexiones compiten por
+	// el writer. 4 permite lectores concurrentes sin disparar contention.
+	db.SetMaxOpenConns(4)
+	db.SetMaxIdleConns(4)
+	db.SetConnMaxLifetime(5 * time.Minute)
 
 	// Set PRAGMAs
 	pragmas := []string{

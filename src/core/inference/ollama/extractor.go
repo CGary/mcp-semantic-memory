@@ -6,9 +6,63 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/hsme/core/src/core/worker"
 )
+
+// parseExtractedKG tolera dos vicios típicos de modelos pequeños como phi3.5:
+//   1) Emiten prosa después del JSON ("Given the provided text...").
+//   2) Se cuelgan a mitad del JSON y emiten texto suelto.
+// Estrategia: intentar decode directo (ignora basura al final) y, si falla,
+// buscar el PRIMER objeto { ... } balanceado en el texto y reintentar.
+// Si nada parsea, devolver KG vacío — la memoria sigue indexada por FTS/vector,
+// y NO queremos quemar 5 intentos por un output que nunca va a mejorar.
+func parseExtractedKG(raw string) worker.KnowledgeGraph {
+	var kg worker.KnowledgeGraph
+
+	if err := json.NewDecoder(strings.NewReader(raw)).Decode(&kg); err == nil {
+		return kg
+	}
+
+	if start := strings.Index(raw, "{"); start >= 0 {
+		depth := 0
+		inString := false
+		escape := false
+		for i := start; i < len(raw); i++ {
+			c := raw[i]
+			if escape {
+				escape = false
+				continue
+			}
+			if c == '\\' {
+				escape = true
+				continue
+			}
+			if c == '"' {
+				inString = !inString
+				continue
+			}
+			if inString {
+				continue
+			}
+			switch c {
+			case '{':
+				depth++
+			case '}':
+				depth--
+				if depth == 0 {
+					if err := json.Unmarshal([]byte(raw[start:i+1]), &kg); err == nil {
+						return kg
+					}
+					return worker.KnowledgeGraph{}
+				}
+			}
+		}
+	}
+	return worker.KnowledgeGraph{}
+}
 
 type Extractor struct {
 	client *Client
@@ -68,10 +122,15 @@ Do not return explanations or markdown formatting like ` + "```" + `json. Just r
 		return worker.KnowledgeGraph{}, fmt.Errorf("failed to decode extract response: %w", err)
 	}
 
-	var kg worker.KnowledgeGraph
-	if err := json.Unmarshal([]byte(resBody.Response), &kg); err != nil {
-		return worker.KnowledgeGraph{}, fmt.Errorf("failed to parse extracted JSON: %w (response: %s)", err, resBody.Response)
+	kg := parseExtractedKG(resBody.Response)
+	if len(kg.Nodes) == 0 && len(kg.Edges) == 0 && strings.TrimSpace(resBody.Response) != "" {
+		// El modelo respondió pero no pudimos extraer nada útil. Log para diagnóstico,
+		// pero no fallamos: la memoria queda indexada por FTS/vector igual.
+		preview := resBody.Response
+		if len(preview) > 200 {
+			preview = preview[:200] + "…"
+		}
+		fmt.Fprintf(os.Stderr, "[extractor] parseo fallido o vacío, continúo sin KG (preview: %s)\n", preview)
 	}
-
 	return kg, nil
 }

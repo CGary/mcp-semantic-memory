@@ -37,6 +37,10 @@ func (m *mockSearchEmbedder) Dimension() int {
 	return m.dim
 }
 
+func (m *mockSearchEmbedder) ModelID() string {
+	return "mock-search-embedder"
+}
+
 func TestFuzzySearchHybrid(t *testing.T) {
 	dbPath := "test_search_fuzzy.db"
 	defer os.Remove(dbPath)

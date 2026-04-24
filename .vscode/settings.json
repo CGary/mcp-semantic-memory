@@ -3,8 +3,8 @@
     {
       "previewLimit": 50,
       "driver": "SQLite",
-      "name": "hsme",
-      "database": "${workspaceFolder:hsme}/data/engram.db"
+      "database": "${workspaceFolder:hsme}/data/engram.db",
+      "name": "hsme_db"
     }
   ],
   "sqltools.useNodeRuntime": true

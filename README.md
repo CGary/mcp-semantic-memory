@@ -1,83 +1,77 @@
-# HSME: Hybrid Semantic Memory Engine
+# HSME (Hybrid Semantic Memory Engine) v1.0.1
 
-HSME is a local-first, high-performance memory engine designed to provide long-term context and semantic reasoning to AI agents. It operates as a Model Context Protocol (MCP) server, integrating advanced vector search with traditional lexical indexing.
+HSME es un motor de memoria semántica híbrida de alto rendimiento diseñado para proporcionar una base de conocimiento persistente y con trazabilidad para agentes de IA. Combina la velocidad de la búsqueda léxica, la profundidad de la búsqueda semántica y la estructura de un Grafo de Conocimiento técnico.
 
-## 🚀 Key Features
+## 🏗️ Arquitectura de Doble Proceso
 
-*   **Hybrid Retrieval**: Combines SQLite FTS5 (Lexical) and `sqlite-vec` (Semantic) using Reciprocal Rank Fusion (RRF).
-*   **Background Enrichment**: Asynchronous worker that processes embeddings and extracts knowledge graphs using local LLMs (Ollama).
-*   **Causal Traceability**: A Knowledge Graph layer to track dependencies and relations between technical entities.
-*   **Privacy-First**: 100% local execution. No data leaves the host environment.
+HSME separa la interfaz de usuario de las tareas pesadas de procesamiento para garantizar una latencia mínima en el servidor MCP:
 
----
+1.  **MCP Server (`hsme`)**: Servidor ligero que maneja las peticiones del agente vía `stdio`. Realiza búsquedas híbridas instantáneas y encola nuevas memorias.
+2.  **Async Worker (`hsme-worker`)**: Proceso en segundo plano que consume la cola de tareas para:
+    *   Generar embeddings de vectores (`nomic-embed-text`).
+    *   Extraer entidades y relaciones técnicas (`phi3.5`).
+    *   Construir el Grafo de Conocimiento dinámicamente.
 
-## 🏗️ Architecture
+## 🚀 Instalación y Setup
 
-HSME is built with **Go** and leverages **SQLite** as its primary storage engine. 
+### Requisitos
+- Go 1.26+ con CGO habilitado.
+- [Just](https://github.com/casey/just) (recomendado) para la gestión de tareas.
+- Ollama instalado y accesible con los modelos: `nomic-embed-text` y `phi3.5`.
 
-1.  **Ingestion**: Documents are hashed, chunked, and stored synchronously.
-2.  **Inference**: An internal worker polls pending tasks to generate vectors via `nomic-embed-text` and extract entities via `phi3.5`.
-3.  **Retrieval**: Exposes tools via the MCP protocol for agents to store and query context.
-
----
-
-## 💾 Data Persistence & Integrity
-
-The state of HSME resides entirely in a SQLite database. For the engine to function and maintain consistency, it is critical to understand its physical structure.
-
-### Anatomy of the Database
-By default, the data directory contains three files:
-1.  **`engram.db`**: The main database file containing all structured data, FTS5 indexes, and vectors.
-2.  **`engram.db-wal`**: The Write-Ahead Log. This file contains committed transactions not yet merged into the main `.db`. **Never delete or ignore this file.**
-3.  **`engram.db-shm`**: Shared memory file used for concurrent access.
-
-### 🛡️ Backup Strategy
-Because HSME operates in WAL mode, a simple file copy while the server is running might result in a corrupted backup.
-
-#### 1. Atomic Online Backup (Recommended)
-Use the SQLite backup API to create a consistent snapshot without stopping the server:
+### Instalación Rápida
 ```bash
-sqlite3 /path/to/data/engram.db ".backup /path/to/backups/hsme_backup_$(date +%Y%m%d).db"
+# Compila e instala binarios en ~/go/bin y los copia a la raíz
+just install
 ```
 
-#### 2. Offline Backup
-If the MCP server is disconnected, copy all three files (`.db`, `.db-wal`, `.db-shm`) to your backup destination.
+## 📂 Operación y Mantenimiento
 
-### 🔄 Disaster Recovery
-To restore HSME on a new system:
-1.  **Source Code**: Clone the repository and build the binary (`go build -tags="..."`).
-2.  **Dependencies**: Install Ollama and pull the required models (`nomic-embed-text`, `phi3.5`).
-3.  **Data**: Place your `engram.db` backup into the data directory defined by `SQLITE_DB_PATH`.
-4.  **Launch**: Restart the Gemini CLI or your MCP host.
+El motor utiliza **SQLite** con los módulos **FTS5** y **sqlite-vec** integrados. La base de datos central reside en `data/engram.db`.
 
----
+### Comandos de Just
+- `just serve`: Inicia el servidor MCP (Interactivo).
+- `just work-bg`: Lanza el procesador de grafos y embeddings en segundo plano (Log: `worker_new.log`).
+- `just status`: Muestra una instantánea del progreso del procesamiento y salud del grafo.
+- `just watch-status`: Monitoreo en tiempo real del procesamiento de la cola.
+- `just backup`: Crea un backup atómico compatible con el modo WAL de SQLite.
+- `just restore`: Restaura el backup más reciente previa verificación de integridad.
 
-## 🛠️ Build & Configuration
+## 🔌 Configuración del Cliente MCP
 
-### Build Tags
-HSME requires specific CGO build tags to enable SQLite extensions:
-```bash
-go build -tags="sqlite_load_extension sqlite_fts5" -o hsme ./cmd/server
+Para integrar HSME con **Gemini CLI**, **Claude Desktop** o cualquier cliente MCP, añade la configuración apuntando al binario absoluto:
+
+```json
+{
+  "mcpServers": {
+    "hsme": {
+      "command": "/home/gary/dev/hsme/hsme",
+      "env": {
+        "SQLITE_DB_PATH": "/home/gary/dev/hsme/data/engram.db",
+        "OLLAMA_HOST": "http://localhost:11434"
+      }
+    }
+  }
+}
 ```
 
-### Environment Variables
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `SQLITE_DB_PATH` | Absolute path to the .db file | `./engram.db` |
-| `OLLAMA_HOST` | URL of the Ollama service | `http://localhost:11434` |
-| `EMBEDDING_MODEL` | Model for vector generation | `nomic-embed-text` |
-| `EXTRACTION_MODEL` | Model for graph extraction | `phi3.5` |
+## 🧠 Capacidades del Motor
+
+### 1. Búsqueda Híbrida (RRF)
+Implementa **Reciprocal Rank Fusion** para combinar resultados de:
+*   **FTS5**: Precisión léxica para términos técnicos exactos, comandos y nombres de archivos.
+*   **Vector Search**: Similitud semántica para conceptos y descripciones abstractas.
+
+### 2. Grafo de Conocimiento Técnico
+El worker extrae automáticamente:
+*   **Entidades**: `TECH` (tecnologías), `FILE` (rutas), `CMD` (comandos), `ERROR` (logs).
+*   **Relaciones**: `DEPENDS_ON`, `RESOLVES`, `CAUSES`.
+*   **Trazabilidad**: Cada nodo y relación está vinculado a la memoria original (evidencia).
+
+### 3. Concurrencia Robusta
+Optimizado para el uso local intenso:
+*   **Modo WAL**: Permite lecturas concurrentes mientras el worker escribe los embeddings.
+*   **Write Mutex**: Protege el canal `stdout` para evitar corrupciones de JSON-RPC durante la ejecución concurrente.
 
 ---
-
-## 🔧 MCP Tools Exposes
-
-*   **`store_context`**: Ingests new text into the memory engine.
-*   **`search_fuzzy`**: Performs hybrid search (Semantic + Lexical).
-*   **`search_exact`**: Performs keyword-based lookups.
-*   **`trace_dependencies`**: Navigates the knowledge graph for entity relations.
-
----
-
-## ⚠️ Critical Warning
-**Vector Dimension Stability**: The database is initialized for **768-dimensional** vectors. Changing the `EMBEDDING_MODEL` to a model with different dimensions will render the existing `memory_chunks_vec` table invalid and require a full re-index or a fresh database.
+**Desarrollo**: Este proyecto sigue los principios de **Spec-Driven Development (SDD)** con **Strict TDD Mode** habilitado. Consulta el `Technical_Specification.md` para detalles internos del esquema y el flujo de ingesta.

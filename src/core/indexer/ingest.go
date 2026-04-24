@@ -10,15 +10,30 @@ import (
 
 // StoreContext ingests a new memory document.
 func StoreContext(db *sql.DB, content string, sourceType string, supersedesID *int64, forceReingest bool) (int64, error) {
-	// 1. Compute hash for deduplication
 	hash := ComputeHash(content)
 
-	// 2. Check for deduplication
+	// Arrancamos la tx ANTES del dedup check. Con _txlock=immediate (ver db.go)
+	// el BEGIN toma el write-lock; si otro caller está insertando el mismo hash
+	// concurrentemente, nosotros bloqueamos hasta que commitee y después nuestro
+	// SELECT ve su fila. Esto cierra la race entre SELECT y INSERT que existía
+	// cuando el dedup vivía fuera de la tx.
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Dedup check — solo contra memorias ACTIVAS (el unique index es parcial
+	// con WHERE status='active', así que filas superseded pueden compartir hash
+	// y un SELECT sin filtro devolvería un ID superseded).
 	var existingID int64
-	err := db.QueryRow("SELECT id FROM memories WHERE content_hash = ?", hash).Scan(&existingID)
+	err = tx.QueryRow("SELECT id FROM memories WHERE content_hash = ? AND status = 'active'", hash).Scan(&existingID)
 	if err == nil {
 		if !forceReingest {
-			return existingID, nil // deduplicated
+			if cerr := tx.Commit(); cerr != nil {
+				return 0, fmt.Errorf("failed to commit dedup tx: %w", cerr)
+			}
+			return existingID, nil
 		}
 		// forceReingest is true. Spec says:
 		// "a new memory is created with the same content hash only if the caller
@@ -30,13 +45,6 @@ func StoreContext(db *sql.DB, content string, sourceType string, supersedesID *i
 	} else if err != sql.ErrNoRows {
 		return 0, fmt.Errorf("failed to check for existing content: %w", err)
 	}
-
-	// 3. Start transaction
-	tx, err := db.Begin()
-	if err != nil {
-		return 0, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
 
 	// 4. Handle supersedence BEFORE insert to avoid UNIQUE constraint on active hash
 	if supersedesID != nil {
@@ -79,17 +87,10 @@ func StoreContext(db *sql.DB, content string, sourceType string, supersedesID *i
 			return 0, fmt.Errorf("failed to insert chunk %d: %w", i, err)
 		}
 
-		chunkID, err := chunkRes.LastInsertId()
-		if err != nil {
+		if _, err := chunkRes.LastInsertId(); err != nil {
 			return 0, fmt.Errorf("failed to get chunk last insert id: %w", err)
 		}
-
-		// 6. Explicitly sync memory_chunks_fts
-		// Note: db.go has triggers, so this might be redundant or fail if not handled.
-		// We use INSERT OR IGNORE or just allow it to fail silently if it's already there.
-		_, _ = tx.Exec(`
-			INSERT OR IGNORE INTO memory_chunks_fts(rowid, chunk_text) VALUES (?, ?)
-		`, chunkID, chunkText)
+		// FTS5 ya se sincroniza vía el trigger memory_chunks_ai en el schema.
 	}
 
 	// 8. Enqueue async tasks (T007)

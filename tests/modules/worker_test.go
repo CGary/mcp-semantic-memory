@@ -23,13 +23,19 @@ func (m *mockEmbedder) Dimension() int {
 	return m.dim
 }
 
+func (m *mockEmbedder) ModelID() string {
+	return "mock-embedder"
+}
+
 type mockGraphExtractor struct{}
 
 func (m *mockGraphExtractor) ExtractEntities(ctx context.Context, text string) (worker.KnowledgeGraph, error) {
+	// Usamos tipos del enum válido (§14.4: TECH|ERROR|FILE|CMD); el worker
+	// ahora filtra cualquier otro tipo por spec §6.5.
 	return worker.KnowledgeGraph{
 		Nodes: []worker.Node{
-			{Type: "ENTITY", Name: "Entity A"},
-			{Type: "ENTITY", Name: "Entity B"},
+			{Type: "TECH", Name: "Entity A"},
+			{Type: "TECH", Name: "Entity B"},
 		},
 		Edges: []worker.Edge{
 			{Source: "Entity A", Target: "Entity B", Relation: "DEPENDS_ON"},

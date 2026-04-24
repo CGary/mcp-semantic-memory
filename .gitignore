@@ -1,5 +1,6 @@
 # Binarios y ejecutables
 hsme
+hsme-worker
 bin/
 *.exe
 *.so
@@ -24,3 +25,5 @@ scripts/test_search.go
 tmp/
 *.log
 .DS_Store
+
+backups/

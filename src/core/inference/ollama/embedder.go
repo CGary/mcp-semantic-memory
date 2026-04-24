@@ -73,3 +73,10 @@ func (e *Embedder) GenerateVector(ctx context.Context, text string) ([]float32, 
 func (e *Embedder) Dimension() int {
 	return e.dim
 }
+
+// ModelID retorna el identificador estable del modelo para el registro de
+// configuración (§4.2). Se compara contra system_config.embedding_model al
+// arrancar para detectar cambios incompatibles sin reindex.
+func (e *Embedder) ModelID() string {
+	return e.model
+}

@@ -88,7 +88,12 @@ func (s *Server) Serve() {
 		}
 
 		fmt.Fprintf(os.Stderr, "Received request: %s (ID: %s)\n", req.Method, string(req.ID))
-		s.handleRequest(req)
+		// Despacho concurrente: un tool call lento (ej. search_fuzzy llamando a Ollama)
+		// ya no bloquea el resto del tráfico JSON-RPC. sendResponse está protegido por
+		// writeMutex, y el mapa de tools es inmutable después de RegisterTool
+		// (todas las registraciones ocurren en main() antes de Serve), así que las
+		// goroutines solo lo leen sin carrera.
+		go s.handleRequest(req)
 	}
 }
 
