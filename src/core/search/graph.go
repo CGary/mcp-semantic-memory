@@ -1,11 +1,10 @@
 package search
 
 import (
-	"context"
-	"database/sql"
-	"sort"
+        "context"
+        "database/sql"
+        "strings"
 )
-
 func GraphSearch(ctx context.Context, db *sql.DB, query string, limit int) ([]SearchResult, error) {
 	// Minimal graph search logic: find nodes matching name and return their evidence memories
 	rows, err := db.QueryContext(ctx, `
@@ -46,99 +45,102 @@ type TraceResult struct {
 }
 
 func TraceDependencies(ctx context.Context, db *sql.DB, entityName string, direction string, maxDepth int, maxNodes int) (*TraceResult, error) {
-	if maxDepth <= 0 {
-		maxDepth = 5
-	}
-	if maxNodes <= 0 {
-		maxNodes = 100
-	}
+        if maxDepth <= 0 {
+                maxDepth = 5
+        }
+        if maxNodes <= 0 {
+                maxNodes = 100
+        }
 
-	// Simplified recursive CTE for tracing dependencies
-	query := `
-		WITH RECURSIVE trace(id, depth) AS (
-			SELECT id, 0 FROM kg_nodes WHERE canonical_name = ?
-			UNION
-			SELECT 
-				CASE 
-					WHEN ? = 'downstream' THEN e.target_node_id
-					WHEN ? = 'upstream' THEN e.source_node_id
-					ELSE CASE WHEN t.id = e.source_node_id THEN e.target_node_id ELSE e.source_node_id END
-				END,
-				t.depth + 1
-			FROM kg_edge_evidence e
-			JOIN trace t ON (
-				(? = 'downstream' AND t.id = e.source_node_id) OR
-				(? = 'upstream' AND t.id = e.target_node_id) OR
-				(? = 'both' AND (t.id = e.source_node_id OR t.id = e.target_node_id))
-			)
-			WHERE t.depth < ?
-		)
-		SELECT DISTINCT e.source_node_id, e.target_node_id, e.relation_type, e.memory_id
-		FROM kg_edge_evidence e
-		JOIN trace t ON t.id = e.source_node_id OR t.id = e.target_node_id
-	`
-	rows, err := db.QueryContext(ctx, query, entityName, direction, direction, direction, direction, direction, maxDepth)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+        // Normalización del término de búsqueda
+        searchName := strings.ToLower(strings.TrimSpace(entityName))
 
-	result := &TraceResult{
-		Entity: entityName,
-		Nodes:  []map[string]interface{}{},
-		Edges:  []DependencyEdge{},
-	}
-	nodeSet := make(map[int64]bool)
+        // CTE Recursivo: travesía bidireccional robusta
+        query := `
+                WITH RECURSIVE trace(id, depth) AS (
+                        SELECT id, 0 FROM kg_nodes WHERE canonical_name = ?
+                        UNION
+                        SELECT 
+                                CASE WHEN t.id = e.source_node_id THEN e.target_node_id ELSE e.source_node_id END,
+                                t.depth + 1
+                        FROM kg_edge_evidence e
+                        JOIN trace t ON (t.id = e.source_node_id OR t.id = e.target_node_id)
+                        WHERE t.depth < ? 
+                        AND (
+                             (? = 'both') OR 
+                             (? = 'downstream' AND t.id = e.source_node_id) OR
+                             (? = 'upstream' AND t.id = e.target_node_id)
+                        )
+                )
+                SELECT id FROM trace
+        `
+        rows, err := db.QueryContext(ctx, query, searchName, maxDepth, direction, direction, direction)
+        if err != nil {
+                return nil, err
+        }
+        defer rows.Close()
 
-	for rows.Next() {
-		var edge DependencyEdge
-		if err := rows.Scan(&edge.SourceID, &edge.TargetID, &edge.RelationType, &edge.MemoryID); err != nil {
-			return nil, err
-		}
-		result.Edges = append(result.Edges, edge)
-		nodeSet[edge.SourceID] = true
-		nodeSet[edge.TargetID] = true
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
+        result := &TraceResult{
+                Entity: entityName,
+                Nodes:  []map[string]interface{}{},
+                Edges:  []DependencyEdge{},
+        }
 
-	nodeIDs := make([]int64, 0, len(nodeSet))
-	for nodeID := range nodeSet {
-		nodeIDs = append(nodeIDs, nodeID)
-	}
-	sort.Slice(nodeIDs, func(i, j int) bool { return nodeIDs[i] < nodeIDs[j] })
+        reachableIDs := make(map[int64]bool)
+        for rows.Next() {
+                var id int64
+                if err := rows.Scan(&id); err == nil {
+                        reachableIDs[id] = true
+                }
+        }
 
-	if len(nodeIDs) > maxNodes {
-		result.Truncated = true
-		allowed := make(map[int64]struct{}, maxNodes)
-		for _, nodeID := range nodeIDs[:maxNodes] {
-			allowed[nodeID] = struct{}{}
-		}
-		filteredEdges := make([]DependencyEdge, 0, len(result.Edges))
-		for _, edge := range result.Edges {
-			_, okSource := allowed[edge.SourceID]
-			_, okTarget := allowed[edge.TargetID]
-			if okSource && okTarget {
-				filteredEdges = append(filteredEdges, edge)
-			}
-		}
-		result.Edges = filteredEdges
-		nodeIDs = nodeIDs[:maxNodes]
-	}
+        if len(reachableIDs) == 0 {
+                return result, nil
+        }
 
-	// Fetch node details
-	for _, nodeID := range nodeIDs {
-		var nodeType, displayName string
-		err := db.QueryRowContext(ctx, "SELECT type, display_name FROM kg_nodes WHERE id = ?", nodeID).Scan(&nodeType, &displayName)
-		if err == nil {
-			result.Nodes = append(result.Nodes, map[string]interface{}{
-				"id":   nodeID,
-				"type": nodeType,
-				"name": displayName,
-			})
-		}
-	}
+        // 1. Obtener detalles de todos los nodos alcanzados
+        for nodeID := range reachableIDs {
+                var nodeType, displayName string
+                err := db.QueryRowContext(ctx, "SELECT type, display_name FROM kg_nodes WHERE id = ?", nodeID).Scan(&nodeType, &displayName)
+                if err == nil {
+                        result.Nodes = append(result.Nodes, map[string]interface{}{
+                                "id":   nodeID,
+                                "type": nodeType,
+                                "name": displayName,
+                        })
+                }
+        }
 
-	return result, nil
+        // 2. Obtener todas las aristas que conectan estos nodos
+        // Construimos un IN clause dinámico o iteramos si son pocos (simplificado para este fix)
+        for nodeID := range reachableIDs {
+                edgeRows, err := db.QueryContext(ctx, `
+                        SELECT source_node_id, target_node_id, relation_type, memory_id 
+                        FROM kg_edge_evidence 
+                        WHERE source_node_id = ? OR target_node_id = ?`, nodeID, nodeID)
+                if err == nil {
+                        for edgeRows.Next() {
+                                var edge DependencyEdge
+                                if err := edgeRows.Scan(&edge.SourceID, &edge.TargetID, &edge.RelationType, &edge.MemoryID); err == nil {
+                                        // Solo añadir si ambos nodos de la arista están en nuestro set alcanzable
+                                        if reachableIDs[edge.SourceID] && reachableIDs[edge.TargetID] {
+                                                // Evitar duplicados (arista A->B vista desde A y desde B)
+                                                found := false
+                                                for _, existing := range result.Edges {
+                                                        if existing.SourceID == edge.SourceID && existing.TargetID == edge.TargetID && existing.RelationType == edge.RelationType {
+                                                                found = true
+                                                                break
+                                                        }
+                                                }
+                                                if !found {
+                                                        result.Edges = append(result.Edges, edge)
+                                                }
+                                        }
+                                }
+                        }
+                        edgeRows.Close()
+                }
+        }
+
+        return result, nil
 }

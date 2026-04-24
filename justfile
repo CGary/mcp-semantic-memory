@@ -11,15 +11,24 @@ DB_DIR := PROJECT_ROOT + "/data"
 export SQLITE_DB_PATH := DB_DIR + "/engram.db"
 BACKUP_DIR := "backups"
 
+# Compilar binarios locales
+build:
+        go build -tags "{{GO_TAGS}}" -o hsme ./cmd/hsme
+        go build -tags "{{GO_TAGS}}" -o hsme-worker ./cmd/worker
+        @echo "✅ Binarios compilados en la raíz."
+
+# Ejecutar tests con soporte para FTS5 y Vectores
+test:
+        go test -v -tags "{{GO_TAGS}}" ./...
+
 # Compilar e instalar binarios de forma global
 install:
-	@mkdir -p {{INSTALL_PATH}}
-	go build -tags "{{GO_TAGS}}" -o {{INSTALL_PATH}}/hsme ./cmd/hsme
-	go build -tags "{{GO_TAGS}}" -o {{INSTALL_PATH}}/hsme-worker ./cmd/worker
-	@tmp_hsme="{{PROJECT_ROOT}}/.hsme.tmp" && cp {{INSTALL_PATH}}/hsme "$$tmp_hsme" && mv -f "$$tmp_hsme" {{PROJECT_ROOT}}/hsme
-	@tmp_worker="{{PROJECT_ROOT}}/.hsme-worker.tmp" && cp {{INSTALL_PATH}}/hsme-worker "$$tmp_worker" && mv -f "$$tmp_worker" {{PROJECT_ROOT}}/hsme-worker
-	@echo "✅ Binarios instalados en {{INSTALL_PATH}} y copiados a la raíz."
-
+        @mkdir -p {{INSTALL_PATH}}
+        go build -tags "{{GO_TAGS}}" -o {{INSTALL_PATH}}/hsme ./cmd/hsme
+        go build -tags "{{GO_TAGS}}" -o {{INSTALL_PATH}}/hsme-worker ./cmd/worker
+        @tmp_hsme="{{PROJECT_ROOT}}/.hsme.tmp" && cp {{INSTALL_PATH}}/hsme "$$tmp_hsme" && mv -f "$$tmp_hsme" {{PROJECT_ROOT}}/hsme
+        @tmp_worker="{{PROJECT_ROOT}}/.hsme-worker.tmp" && cp {{INSTALL_PATH}}/hsme-worker "$$tmp_worker" && mv -f "$$tmp_worker" {{PROJECT_ROOT}}/hsme-worker
+        @echo "✅ Binarios instalados en {{INSTALL_PATH}} y copiados a la raíz."
 # Ejecutar el servidor MCP
 serve:
 	./hsme

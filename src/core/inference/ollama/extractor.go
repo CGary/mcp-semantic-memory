@@ -80,12 +80,21 @@ func NewExtractor(client *Client, model string) *Extractor {
 }
 
 func (e *Extractor) ExtractEntities(ctx context.Context, text string) (worker.KnowledgeGraph, error) {
-	systemPrompt := `You are a technical graph extractor. Return ONLY valid JSON with the structure:
-{"nodes": [{"type": "TECH|ERROR|FILE|CMD", "name": "string"}], "edges": [{"source": "string", "target": "string", "relation": "DEPENDS_ON|RESOLVES|CAUSES"}]}
-Do not return explanations or markdown formatting like ` + "```" + `json. Just raw JSON.`
+        systemPrompt := `You are a technical graph extractor. Analyze the provided text (may be in Spanish or English) and extract technical entities and their relationships. 
 
-	reqBody := map[string]interface{}{
-		"model":  e.model,
+EXAMPLES:
+Text: "El servicio Redis depende de Docker para funcionar."
+Output: {"nodes": [{"type": "TECH", "name": "Redis"}, {"type": "TECH", "name": "Docker"}], "edges": [{"source": "Redis", "target": "Docker", "relation": "DEPENDS_ON"}]}
+
+Text: "Fix: Corregido el bug en auth.go que causaba error 500."
+Output: {"nodes": [{"type": "FILE", "name": "auth.go"}, {"type": "ERROR", "name": "error 500"}], "edges": [{"source": "auth.go", "target": "error 500", "relation": "RESOLVES"}]}
+
+RULES:
+- Return ONLY valid JSON. No prose, no markdown code blocks.
+- Preserve technical names exactly (e.g. "Entidad Alfa").
+- If no entities are found, return {"nodes": [], "edges": []}.`
+
+        reqBody := map[string]interface{}{		"model":  e.model,
 		"prompt": systemPrompt + "\n\nText to analyze:\n" + text,
 		"format": "json",
 		"stream": false,

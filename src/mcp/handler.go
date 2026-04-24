@@ -36,67 +36,68 @@ type Tool struct {
 }
 
 type Server struct {
-	tools      map[string]ToolDefinition
-	writeMutex sync.Mutex
+        tools      map[string]ToolDefinition
+        writeMutex sync.Mutex
+        wg         sync.WaitGroup
 }
 
 type ToolDefinition struct {
-	Tool    Tool
-	Handler func(json.RawMessage) (interface{}, error)
+        Tool    Tool
+        Handler func(json.RawMessage) (interface{}, error)
 }
 
 func NewServer() *Server {
-	return &Server{
-		tools: make(map[string]ToolDefinition),
-	}
+        return &Server{
+                tools: make(map[string]ToolDefinition),
+        }
 }
 
 func (s *Server) RegisterTool(name string, description string, schema interface{}, handler func(json.RawMessage) (interface{}, error)) {
-	s.tools[name] = ToolDefinition{
-		Tool: Tool{
-			Name:        name,
-			Description: description,
-			InputSchema: schema,
-		},
-		Handler: handler,
-	}
+        s.tools[name] = ToolDefinition{
+                Tool: Tool{
+                        Name:        name,
+                        Description: description,
+                        InputSchema: schema,
+                },
+                Handler: handler,
+        }
 }
 
 func (s *Server) Serve() {
-	fmt.Fprintf(os.Stderr, "HSME MCP server starting (v1.0.1)...\n")
-	
-	reader := bufio.NewReader(os.Stdin)
-	for {
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			if err == io.EOF {
-				fmt.Fprintf(os.Stderr, "Standard input closed (EOF)\n")
-				return
-			}
-			fmt.Fprintf(os.Stderr, "Error reading from stdin: %v\n", err)
-			continue
-		}
+        fmt.Fprintf(os.Stderr, "HSME MCP server starting (v1.0.1)...\n")
 
-		if len(line) == 0 {
-			continue
-		}
+        reader := bufio.NewReader(os.Stdin)
+        for {
+                line, err := reader.ReadString('\n')
+                if err != nil {
+                        if err == io.EOF {
+                                fmt.Fprintf(os.Stderr, "Standard input closed (EOF). Waiting for in-flight requests...\n")
+                                s.wg.Wait()
+                                return
+                        }
+                        fmt.Fprintf(os.Stderr, "Error reading from stdin: %v\n", err)
+                        continue
+                }
 
-		var req JSONRPCRequest
-		if err := json.Unmarshal([]byte(line), &req); err != nil {
-			fmt.Fprintf(os.Stderr, "Error parsing JSON-RPC request: %v | Raw: %s\n", err, line)
-			continue
-		}
+                if len(line) == 0 {
+                        continue
+                }
 
-		fmt.Fprintf(os.Stderr, "Received request: %s (ID: %s)\n", req.Method, string(req.ID))
-		// Despacho concurrente: un tool call lento (ej. search_fuzzy llamando a Ollama)
-		// ya no bloquea el resto del tráfico JSON-RPC. sendResponse está protegido por
-		// writeMutex, y el mapa de tools es inmutable después de RegisterTool
-		// (todas las registraciones ocurren en main() antes de Serve), así que las
-		// goroutines solo lo leen sin carrera.
-		go s.handleRequest(req)
-	}
+                var req JSONRPCRequest
+                if err := json.Unmarshal([]byte(line), &req); err != nil {
+                        fmt.Fprintf(os.Stderr, "Error parsing JSON-RPC request: %v | Raw: %s\n", err, line)
+                        continue
+                }
+
+                fmt.Fprintf(os.Stderr, "Received request: %s (ID: %s)\n", req.Method, string(req.ID))
+
+                s.wg.Add(1)
+                go func(r JSONRPCRequest) {
+                        defer s.wg.Done()
+                        s.handleRequest(r)
+                }(req)
+        }
 }
-
 func (s *Server) sendResponse(resp JSONRPCResponse) {
 	s.writeMutex.Lock()
 	defer s.writeMutex.Unlock()

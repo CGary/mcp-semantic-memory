@@ -1,12 +1,12 @@
 package worker
 
 import (
-	"context"
-	"database/sql"
-	"fmt"
-	"strings"
-	"time"
-
+        "context"
+        "database/sql"
+        "fmt"
+        "os"
+        "strings"
+        "time"
 	vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
 	"github.com/hsme/core/src/core/indexer"
 )
@@ -166,52 +166,72 @@ func (w *Worker) ExecuteTask(ctx context.Context, task *AsyncTask) error {
 			return fmt.Errorf("failed to extract entities: %w", err)
 		}
 
-		// Map original-name → node id para resolver edges. Usamos el nombre CRUDO
-		// del extractor como key porque los edges vienen con esos mismos literales.
+		// Map original-name → node id para resolver edges.
 		nodeIDs := make(map[string]int64)
 
+		// 1. PRIMERA PASADA: Insertar todos los nodos y poblar mapa de IDs
 		for _, node := range kg.Nodes {
-			nodeType := indexer.CanonicalizeType(node.Type)
-			if _, ok := allowedNodeTypes[nodeType]; !ok {
-				// phi3.5 a veces emite basura tipo "TECH|ERROR|FILE|CMD". Descartamos.
-				continue
-			}
-			canonical, display := indexer.CanonicalizeName(node.Name)
-			if canonical == "" {
-				continue
-			}
+		        nodeType := indexer.CanonicalizeType(node.Type)
+		        if _, ok := allowedNodeTypes[nodeType]; !ok {
+		                continue
+		        }
+		        canonical, display := indexer.CanonicalizeName(node.Name)
+		        if canonical == "" {
+		                continue
+		        }
 
-			var nodeID int64
-			err := w.db.QueryRowContext(ctx, `
-				INSERT INTO kg_nodes(type, canonical_name, display_name)
-				VALUES(?, ?, ?)
-				ON CONFLICT(type, canonical_name)
-				DO UPDATE SET display_name=excluded.display_name
-				RETURNING id`,
-				nodeType, canonical, display).Scan(&nodeID)
-			if err != nil {
-				// Fallback si RETURNING no está disponible por alguna razón
-				_, _ = w.db.ExecContext(ctx, "INSERT OR IGNORE INTO kg_nodes(type, canonical_name, display_name) VALUES(?, ?, ?)", nodeType, canonical, display)
-				_ = w.db.QueryRowContext(ctx, "SELECT id FROM kg_nodes WHERE type = ? AND canonical_name = ?", nodeType, canonical).Scan(&nodeID)
-			}
-			nodeIDs[node.Name] = nodeID
+		        var nodeID int64
+		        err := w.db.QueryRowContext(ctx, `
+		                INSERT INTO kg_nodes(type, canonical_name, display_name)
+		                VALUES(?, ?, ?)
+		                ON CONFLICT(type, canonical_name)
+		                DO UPDATE SET display_name=excluded.display_name
+		                RETURNING id`,
+		                nodeType, canonical, display).Scan(&nodeID)
+		        if err != nil {
+		                _, _ = w.db.ExecContext(ctx, "INSERT OR IGNORE INTO kg_nodes(type, canonical_name, display_name) VALUES(?, ?, ?)", nodeType, canonical, display)
+		                _ = w.db.QueryRowContext(ctx, "SELECT id FROM kg_nodes WHERE type = ? AND canonical_name = ?", nodeType, canonical).Scan(&nodeID)
+		        }
+		        nodeIDs[strings.ToLower(strings.TrimSpace(node.Name))] = nodeID
+		        nodeIDs[canonical] = nodeID
 		}
 
+		// 2. SEGUNDA PASADA: Insertar relaciones ahora que todos los IDs existen
 		for _, edge := range kg.Edges {
-			relation := indexer.CanonicalizeType(edge.Relation)
-			if _, ok := allowedRelationTypes[relation]; !ok {
-				continue
-			}
-			sourceID, okS := nodeIDs[edge.Source]
-			targetID, okT := nodeIDs[edge.Target]
-			if okS && okT {
-				_, _ = w.db.ExecContext(ctx, `
-					INSERT OR IGNORE INTO kg_edge_evidence(source_node_id, target_node_id, relation_type, memory_id)
-					VALUES(?, ?, ?, ?)`,
-					sourceID, targetID, relation, task.MemoryID)
-			}
-		}
-	}
+		        relation := indexer.CanonicalizeType(edge.Relation)
+		        if _, ok := allowedRelationTypes[relation]; !ok {
+		                continue
+		        }
+
+		        srcKey := strings.ToLower(strings.TrimSpace(edge.Source))
+		        tgtKey := strings.ToLower(strings.TrimSpace(edge.Target))
+
+		        sourceID, okS := nodeIDs[srcKey]
+		        if !okS {
+		                canonical, _ := indexer.CanonicalizeName(edge.Source)
+		                _ = w.db.QueryRowContext(ctx, "SELECT id FROM kg_nodes WHERE canonical_name = ?", canonical).Scan(&sourceID)
+		                okS = sourceID > 0
+		        }
+
+		        targetID, okT := nodeIDs[tgtKey]
+		        if !okT {
+		                canonical, _ := indexer.CanonicalizeName(edge.Target)
+		                _ = w.db.QueryRowContext(ctx, "SELECT id FROM kg_nodes WHERE canonical_name = ?", canonical).Scan(&targetID)
+		                okT = targetID > 0
+		        }
+
+		        if okS && okT {
+		                _, err = w.db.ExecContext(ctx, `
+		                        INSERT OR IGNORE INTO kg_edge_evidence(source_node_id, target_node_id, relation_type, memory_id)
+		                        VALUES(?, ?, ?, ?)`,
+		                        sourceID, targetID, relation, task.MemoryID)
+		                if err != nil {
+		                        fmt.Fprintf(os.Stderr, "[worker] error guardando relación: %v\n", err)
+		                }
+		        } else {
+		                fmt.Fprintf(os.Stderr, "[worker] relación descartada: fuente(%s:%v), destino(%s:%v)\n", edge.Source, okS, edge.Target, okT)
+		        }
+		}	}
 
 	_, err = w.db.ExecContext(ctx, "UPDATE async_tasks SET status = 'completed', completed_at = ? WHERE id = ?", time.Now().Format(time.RFC3339), task.ID)
 	return err
