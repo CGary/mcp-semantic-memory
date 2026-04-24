@@ -53,6 +53,13 @@ type MemorySearchResult struct {
 	Highlights     []ChunkHighlight `json:"highlights"`
 }
 
+type ExactMatchResult struct {
+	MemoryID   int64  `json:"memory_id"`
+	ChunkID    int64  `json:"chunk_id"`
+	ChunkIndex int    `json:"chunk_index"`
+	Text       string `json:"text"`
+}
+
 type SearchResult struct {
 	ID    int64
 	Score float64
@@ -262,12 +269,12 @@ func VectorSearch(ctx context.Context, db *sql.DB, vector []float32, limit int) 
 	return results, nil
 }
 
-func ExactSearch(ctx context.Context, db *sql.DB, keyword string, limit int) ([]MemorySearchResult, error) {
+func ExactSearch(ctx context.Context, db *sql.DB, keyword string, limit int) ([]ExactMatchResult, error) {
 	rows, err := db.QueryContext(ctx, `
-		SELECT DISTINCT m.id, m.status
-		FROM memories m
-		JOIN memory_chunks c ON m.id = c.memory_id
+		SELECT c.memory_id, c.id, c.chunk_index, c.chunk_text
+		FROM memory_chunks c
 		WHERE c.chunk_text LIKE ?
+		ORDER BY c.memory_id, c.chunk_index
 		LIMIT ?
 	`, "%"+keyword+"%", limit)
 	if err != nil {
@@ -275,15 +282,12 @@ func ExactSearch(ctx context.Context, db *sql.DB, keyword string, limit int) ([]
 	}
 	defer rows.Close()
 
-	var results []MemorySearchResult
+	var results []ExactMatchResult
 	for rows.Next() {
-		var res MemorySearchResult
-		var status string
-		if err := rows.Scan(&res.MemoryID, &status); err != nil {
+		var res ExactMatchResult
+		if err := rows.Scan(&res.MemoryID, &res.ChunkID, &res.ChunkIndex, &res.Text); err != nil {
 			return nil, err
 		}
-		res.IsSuperseded = status == "superseded"
-		res.Score = 1.0
 		results = append(results, res)
 	}
 	return results, nil

@@ -2,7 +2,9 @@ package modules
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -28,6 +30,26 @@ func (m *mockEmbedder) ModelID() string {
 }
 
 type mockGraphExtractor struct{}
+
+type flakyLengthEmbedder struct {
+	dim      int
+	maxChars int
+}
+
+func (m *flakyLengthEmbedder) GenerateVector(ctx context.Context, text string) ([]float32, error) {
+	if len(text) > m.maxChars {
+		return nil, fmt.Errorf("ollama API returned status 500 for embeddings: the input length exceeds the context length")
+	}
+	return make([]float32, m.dim), nil
+}
+
+func (m *flakyLengthEmbedder) Dimension() int {
+	return m.dim
+}
+
+func (m *flakyLengthEmbedder) ModelID() string {
+	return "flaky-length-embedder"
+}
 
 func (m *mockGraphExtractor) ExtractEntities(ctx context.Context, text string) (worker.KnowledgeGraph, error) {
 	// Usamos tipos del enum válido (§14.4: TECH|ERROR|FILE|CMD); el worker
@@ -202,5 +224,69 @@ func TestWorkerExecution(t *testing.T) {
 	}
 	if count != 1 {
 		t.Errorf("Expected 1 edge evidence, got %d", count)
+	}
+}
+
+func TestWorkerExecution_RechunksOversizedEmbedInput(t *testing.T) {
+	dbPath := "test_worker_rechunk.db"
+	defer os.Remove(dbPath)
+
+	db, err := sqlite.InitDB(dbPath)
+	if err != nil {
+		t.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer db.Close()
+
+	content := strings.TrimSpace(strings.Repeat("abcdefgh ", 500))
+	_, err = db.Exec("INSERT INTO memories (id, raw_content, content_hash, source_type, status) VALUES (1, ?, 'hash-rechunk', 'note', 'active')", content)
+	if err != nil {
+		t.Fatalf("Failed to insert memory: %v", err)
+	}
+	_, err = db.Exec("INSERT INTO memory_chunks (id, memory_id, chunk_index, chunk_text, token_estimate) VALUES (1, 1, 0, ?, 500)", content)
+	if err != nil {
+		t.Fatalf("Failed to insert oversized chunk: %v", err)
+	}
+
+	w := worker.NewWorker(db, &flakyLengthEmbedder{dim: 768, maxChars: 3200}, &mockGraphExtractor{})
+
+	_, err = db.Exec("INSERT INTO async_tasks (memory_id, task_type, status) VALUES (1, 'embed', 'pending')")
+	if err != nil {
+		t.Fatalf("Failed to insert embed task: %v", err)
+	}
+
+	task, err := w.LeaseNextTask(context.Background())
+	if err != nil {
+		t.Fatalf("Failed to lease task: %v", err)
+	}
+	if task == nil {
+		t.Fatal("Expected embed task to be leased")
+	}
+
+	if err := w.ExecuteTask(context.Background(), task); err != nil {
+		t.Fatalf("Expected rechunk-and-embed to succeed, got: %v", err)
+	}
+
+	var chunkCount int
+	if err := db.QueryRow("SELECT COUNT(*) FROM memory_chunks WHERE memory_id = 1").Scan(&chunkCount); err != nil {
+		t.Fatalf("Failed to count chunks: %v", err)
+	}
+	if chunkCount < 2 {
+		t.Fatalf("Expected oversized chunk to be split into multiple chunks, got %d", chunkCount)
+	}
+
+	var maxChunkLen int
+	if err := db.QueryRow("SELECT MAX(LENGTH(chunk_text)) FROM memory_chunks WHERE memory_id = 1").Scan(&maxChunkLen); err != nil {
+		t.Fatalf("Failed to query max chunk length: %v", err)
+	}
+	if maxChunkLen > 3200 {
+		t.Fatalf("Expected rechunked pieces <= 3200 chars, got %d", maxChunkLen)
+	}
+
+	var status string
+	if err := db.QueryRow("SELECT status FROM async_tasks WHERE id = ?", task.ID).Scan(&status); err != nil {
+		t.Fatalf("Failed to query task status: %v", err)
+	}
+	if status != "completed" {
+		t.Fatalf("Expected task status completed, got %s", status)
 	}
 }

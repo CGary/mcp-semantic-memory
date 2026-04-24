@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
@@ -123,21 +124,29 @@ func (w *Worker) ExecuteTask(ctx context.Context, task *AsyncTask) error {
 	}
 
 	if task.TaskType == "embed" {
-		rows, err := w.db.QueryContext(ctx, "SELECT id, chunk_text FROM memory_chunks WHERE memory_id = ?", task.MemoryID)
+		chunks, err := w.loadChunks(ctx, task.MemoryID)
 		if err != nil {
 			return fmt.Errorf("failed to get chunks: %w", err)
 		}
-		defer rows.Close()
 
-		for rows.Next() {
-			var chunkID int64
-			var chunkText string
-			if err := rows.Scan(&chunkID, &chunkText); err != nil {
-				return err
-			}
-
-			vector, err := w.Embedder.GenerateVector(ctx, chunkText)
+		for i := 0; i < len(chunks); i++ {
+			chunk := chunks[i]
+			vector, err := w.Embedder.GenerateVector(ctx, chunk.Text)
 			if err != nil {
+				if isEmbeddingContextLengthError(err) {
+					rechunked, splitErr := w.rechunkOversizedChunk(ctx, task.MemoryID, chunk.ID, chunk.Index, chunk.Text)
+					if splitErr != nil {
+						return splitErr
+					}
+					if rechunked {
+						chunks, err = w.loadChunks(ctx, task.MemoryID)
+						if err != nil {
+							return fmt.Errorf("failed to reload rechunked memory: %w", err)
+						}
+						i = -1
+						continue
+					}
+				}
 				return fmt.Errorf("failed to generate vector: %w", err)
 			}
 
@@ -146,7 +155,7 @@ func (w *Worker) ExecuteTask(ctx context.Context, task *AsyncTask) error {
 				return fmt.Errorf("failed to serialize vector: %w", err)
 			}
 
-			_, err = w.db.ExecContext(ctx, "INSERT OR REPLACE INTO memory_chunks_vec(rowid, embedding) VALUES(?, ?)", chunkID, blob)
+			_, err = w.db.ExecContext(ctx, "INSERT OR REPLACE INTO memory_chunks_vec(rowid, embedding) VALUES(?, ?)", chunk.ID, blob)
 			if err != nil {
 				return fmt.Errorf("failed to insert vector: %w", err)
 			}
@@ -206,4 +215,110 @@ func (w *Worker) ExecuteTask(ctx context.Context, task *AsyncTask) error {
 
 	_, err = w.db.ExecContext(ctx, "UPDATE async_tasks SET status = 'completed', completed_at = ? WHERE id = ?", time.Now().Format(time.RFC3339), task.ID)
 	return err
+}
+
+type chunkRecord struct {
+	ID    int64
+	Index int
+	Text  string
+}
+
+func (w *Worker) loadChunks(ctx context.Context, memoryID int64) ([]chunkRecord, error) {
+	rows, err := w.db.QueryContext(ctx, "SELECT id, chunk_index, chunk_text FROM memory_chunks WHERE memory_id = ? ORDER BY chunk_index", memoryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var chunks []chunkRecord
+	for rows.Next() {
+		var chunk chunkRecord
+		if err := rows.Scan(&chunk.ID, &chunk.Index, &chunk.Text); err != nil {
+			return nil, err
+		}
+		chunks = append(chunks, chunk)
+	}
+	return chunks, rows.Err()
+}
+
+func isEmbeddingContextLengthError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(err.Error()), "input length exceeds the context length")
+}
+
+func (w *Worker) rechunkOversizedChunk(ctx context.Context, memoryID, chunkID int64, chunkIndex int, chunkText string) (bool, error) {
+	subChunks := indexer.Split(chunkText, "note")
+	if len(subChunks) <= 1 {
+		return false, nil
+	}
+
+	tx, err := w.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, fmt.Errorf("failed to begin rechunk tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	shiftBy := len(subChunks) - 1
+	if shiftBy > 0 {
+		rows, err := tx.QueryContext(ctx, `
+			SELECT id, chunk_index
+			  FROM memory_chunks
+			 WHERE memory_id = ?
+			   AND chunk_index > ?
+			 ORDER BY chunk_index DESC`, memoryID, chunkIndex)
+		if err != nil {
+			return false, fmt.Errorf("failed to load following chunks for rechunk: %w", err)
+		}
+		type followingChunk struct {
+			id    int64
+			index int
+		}
+		var following []followingChunk
+		for rows.Next() {
+			var fc followingChunk
+			if err := rows.Scan(&fc.id, &fc.index); err != nil {
+				rows.Close()
+				return false, fmt.Errorf("failed to scan following chunk: %w", err)
+			}
+			following = append(following, fc)
+		}
+		rows.Close()
+
+		for _, fc := range following {
+			if _, err := tx.ExecContext(ctx, `
+				UPDATE memory_chunks
+				   SET chunk_index = ?
+				 WHERE id = ?`, fc.index+shiftBy, fc.id); err != nil {
+				return false, fmt.Errorf("failed to shift following chunk: %w", err)
+			}
+		}
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE memory_chunks
+		   SET chunk_text = ?, token_estimate = ?
+		 WHERE id = ?`,
+		subChunks[0], estimateTokens(subChunks[0]), chunkID); err != nil {
+		return false, fmt.Errorf("failed to rewrite oversized chunk: %w", err)
+	}
+
+	for idx := 1; idx < len(subChunks); idx++ {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO memory_chunks(memory_id, chunk_index, chunk_text, token_estimate)
+			VALUES(?, ?, ?, ?)`,
+			memoryID, chunkIndex+idx, subChunks[idx], estimateTokens(subChunks[idx])); err != nil {
+			return false, fmt.Errorf("failed to insert rechunked tail: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return false, fmt.Errorf("failed to commit rechunk tx: %w", err)
+	}
+	return true, nil
+}
+
+func estimateTokens(text string) int {
+	return len(strings.Fields(text))
 }

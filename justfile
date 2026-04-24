@@ -16,8 +16,8 @@ install:
 	@mkdir -p {{INSTALL_PATH}}
 	go build -tags "{{GO_TAGS}}" -o {{INSTALL_PATH}}/hsme ./cmd/hsme
 	go build -tags "{{GO_TAGS}}" -o {{INSTALL_PATH}}/hsme-worker ./cmd/worker
-	@cp {{INSTALL_PATH}}/hsme {{PROJECT_ROOT}}/hsme
-	@cp {{INSTALL_PATH}}/hsme-worker {{PROJECT_ROOT}}/hsme-worker
+	@tmp_hsme="{{PROJECT_ROOT}}/.hsme.tmp" && cp {{INSTALL_PATH}}/hsme "$$tmp_hsme" && mv -f "$$tmp_hsme" {{PROJECT_ROOT}}/hsme
+	@tmp_worker="{{PROJECT_ROOT}}/.hsme-worker.tmp" && cp {{INSTALL_PATH}}/hsme-worker "$$tmp_worker" && mv -f "$$tmp_worker" {{PROJECT_ROOT}}/hsme-worker
 	@echo "✅ Binarios instalados en {{INSTALL_PATH}} y copiados a la raíz."
 
 # Ejecutar el servidor MCP

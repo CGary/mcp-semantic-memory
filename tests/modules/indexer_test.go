@@ -2,6 +2,7 @@ package modules
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/hsme/core/src/core/indexer"
@@ -48,6 +49,17 @@ func TestChunking(t *testing.T) {
 	chunks = indexer.Split(largeContent, "text")
 	if len(chunks) < 2 {
 		t.Errorf("Expected multiple chunks for large content, got %d", len(chunks))
+	}
+
+	longWords := strings.TrimSpace(strings.Repeat("abcdefgh ", 500))
+	chunks = indexer.Split(longWords, "text")
+	if len(chunks) < 2 {
+		t.Fatalf("Expected char ceiling to force multiple chunks, got %d", len(chunks))
+	}
+	for _, chunk := range chunks {
+		if len(chunk) > indexer.MaxChunkChars {
+			t.Fatalf("Expected chunk length <= %d, got %d", indexer.MaxChunkChars, len(chunk))
+		}
 	}
 }
 

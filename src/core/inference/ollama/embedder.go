@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 )
 
@@ -52,7 +53,11 @@ func (e *Embedder) GenerateVector(ctx context.Context, text string) ([]float32, 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("ollama API returned status %d for embeddings", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		if len(body) == 0 {
+			return nil, fmt.Errorf("ollama API returned status %d for embeddings", resp.StatusCode)
+		}
+		return nil, fmt.Errorf("ollama API returned status %d for embeddings: %s", resp.StatusCode, string(body))
 	}
 
 	var resBody struct {

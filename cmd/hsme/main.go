@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -22,6 +23,36 @@ func wrapFuzzySearchResults(results []search.MemorySearchResult) map[string]inte
 	return map[string]interface{}{
 		"results": results,
 	}
+}
+
+func wrapExactSearchResults(results []search.ExactMatchResult) map[string]interface{} {
+	if results == nil {
+		results = []search.ExactMatchResult{}
+	}
+	return map[string]interface{}{
+		"results": results,
+	}
+}
+
+type storeContextParams struct {
+	Content            string `json:"content"`
+	SourceType         string `json:"source_type"`
+	SupersedesMemoryID *int64 `json:"supersedes_memory_id"`
+	ForceReingest      bool   `json:"force_reingest"`
+}
+
+func handleStoreContext(db *sql.DB, params json.RawMessage) (interface{}, error) {
+	var p storeContextParams
+	if err := json.Unmarshal(params, &p); err != nil {
+		return nil, err
+	}
+
+	id, err := indexer.StoreContext(db, p.Content, p.SourceType, p.SupersedesMemoryID, p.ForceReingest)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]interface{}{"memory_id": id, "status": "stored, pending processing"}, nil
 }
 
 func main() {
@@ -93,27 +124,14 @@ func main() {
 		map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"content":     map[string]interface{}{"type": "string"},
-				"source_type": map[string]interface{}{"type": "string"},
+				"content":              map[string]interface{}{"type": "string"},
+				"source_type":          map[string]interface{}{"type": "string"},
+				"supersedes_memory_id": map[string]interface{}{"type": []string{"integer", "null"}},
+				"force_reingest":       map[string]interface{}{"type": []string{"boolean", "null"}},
 			},
 			"required": []string{"content", "source_type"},
 		},
-		func(params json.RawMessage) (interface{}, error) {
-			var p struct {
-				Content    string `json:"content"`
-				SourceType string `json:"source_type"`
-			}
-			if err := json.Unmarshal(params, &p); err != nil {
-				return nil, err
-			}
-
-			id, err := indexer.StoreContext(db, p.Content, p.SourceType, nil, false)
-			if err != nil {
-				return nil, err
-			}
-
-			return map[string]interface{}{"memory_id": id, "status": "stored, pending processing"}, nil
-		},
+		func(params json.RawMessage) (interface{}, error) { return handleStoreContext(db, params) },
 	)
 
 	// search_exact (spec §14.3): LIKE sobre chunk_text, sin ranking semántico.
@@ -137,7 +155,11 @@ func main() {
 			if p.Limit == 0 {
 				p.Limit = 10
 			}
-			return search.ExactSearch(context.Background(), db, p.Keyword, p.Limit)
+			results, err := search.ExactSearch(context.Background(), db, p.Keyword, p.Limit)
+			if err != nil {
+				return nil, err
+			}
+			return wrapExactSearchResults(results), nil
 		},
 	)
 
@@ -152,6 +174,7 @@ func main() {
 				"entity_name": map[string]interface{}{"type": "string"},
 				"direction":   map[string]interface{}{"type": "string", "enum": []string{"downstream", "upstream", "both"}, "default": "both"},
 				"max_depth":   map[string]interface{}{"type": "integer", "default": 5},
+				"max_nodes":   map[string]interface{}{"type": "integer", "default": 100},
 			},
 			"required": []string{"entity_name"},
 		},
@@ -160,6 +183,7 @@ func main() {
 				EntityName string `json:"entity_name"`
 				Direction  string `json:"direction"`
 				MaxDepth   int    `json:"max_depth"`
+				MaxNodes   int    `json:"max_nodes"`
 			}
 			if err := json.Unmarshal(params, &p); err != nil {
 				return nil, err
@@ -170,8 +194,11 @@ func main() {
 			if p.MaxDepth <= 0 {
 				p.MaxDepth = 5
 			}
+			if p.MaxNodes <= 0 {
+				p.MaxNodes = 100
+			}
 			canonical, _ := indexer.CanonicalizeName(p.EntityName)
-			return search.TraceDependencies(context.Background(), db, canonical, p.Direction, p.MaxDepth)
+			return search.TraceDependencies(context.Background(), db, canonical, p.Direction, p.MaxDepth, p.MaxNodes)
 		},
 	)
 

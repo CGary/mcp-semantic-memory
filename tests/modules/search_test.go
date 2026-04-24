@@ -114,3 +114,83 @@ func TestFuzzySearchHybrid(t *testing.T) {
 		t.Error("Expected Memory D to be in results")
 	}
 }
+
+func TestExactSearchReturnsChunkMatches(t *testing.T) {
+	dbPath := "test_search_exact.db"
+	defer os.Remove(dbPath)
+
+	db, err := sqlite.InitDB(dbPath)
+	if err != nil {
+		t.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer db.Close()
+
+	_, err = indexer.StoreContext(db, "timeout in worker and timeout in API", "note", nil, false)
+	if err != nil {
+		t.Fatalf("StoreContext failed: %v", err)
+	}
+
+	results, err := search.ExactSearch(context.Background(), db, "timeout", 10)
+	if err != nil {
+		t.Fatalf("ExactSearch failed: %v", err)
+	}
+	if len(results) == 0 {
+		t.Fatal("Expected exact search results, got none")
+	}
+	if results[0].ChunkID == 0 {
+		t.Fatalf("Expected chunk id in exact result, got %#v", results[0])
+	}
+	if results[0].Text == "" || !strings.Contains(strings.ToLower(results[0].Text), "timeout") {
+		t.Fatalf("Expected matching chunk text in exact result, got %#v", results[0])
+	}
+}
+
+func TestTraceDependenciesUsesEmptyArraysAndTruncation(t *testing.T) {
+	dbPath := "test_trace_dependencies.db"
+	defer os.Remove(dbPath)
+
+	db, err := sqlite.InitDB(dbPath)
+	if err != nil {
+		t.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer db.Close()
+
+	_, err = db.Exec(`
+		INSERT INTO kg_nodes(id, type, canonical_name, display_name) VALUES
+		(1, 'TECH', 'redis', 'Redis'),
+		(2, 'ERROR', 'timeout', 'timeout'),
+		(3, 'FILE', 'src/cache.go', 'src/cache.go')
+	`)
+	if err != nil {
+		t.Fatalf("Failed to insert kg nodes: %v", err)
+	}
+	_, err = db.Exec(`
+		INSERT INTO memories(id, raw_content, content_hash, source_type, status) VALUES
+		(1, 'm1', 'hash-td-1', 'note', 'active')
+	`)
+	if err != nil {
+		t.Fatalf("Failed to insert memory: %v", err)
+	}
+	_, err = db.Exec(`
+		INSERT INTO kg_edge_evidence(source_node_id, target_node_id, relation_type, memory_id) VALUES
+		(1, 2, 'CAUSES', 1),
+		(2, 3, 'RESOLVES', 1)
+	`)
+	if err != nil {
+		t.Fatalf("Failed to insert edges: %v", err)
+	}
+
+	result, err := search.TraceDependencies(context.Background(), db, "redis", "both", 5, 1)
+	if err != nil {
+		t.Fatalf("TraceDependencies failed: %v", err)
+	}
+	if result.Nodes == nil || result.Edges == nil {
+		t.Fatalf("Expected non-nil nodes/edges slices, got %#v", result)
+	}
+	if !result.Truncated {
+		t.Fatalf("Expected truncated=true when max_nodes=1, got %#v", result)
+	}
+	if len(result.Nodes) != 1 {
+		t.Fatalf("Expected exactly 1 node after truncation, got %#v", result.Nodes)
+	}
+}

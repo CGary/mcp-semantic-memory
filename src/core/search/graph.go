@@ -3,6 +3,7 @@ package search
 import (
 	"context"
 	"database/sql"
+	"sort"
 )
 
 func GraphSearch(ctx context.Context, db *sql.DB, query string, limit int) ([]SearchResult, error) {
@@ -38,12 +39,20 @@ type DependencyEdge struct {
 }
 
 type TraceResult struct {
-	Entity string                   `json:"entity"`
-	Nodes  []map[string]interface{} `json:"nodes"`
-	Edges  []DependencyEdge         `json:"edges"`
+	Entity    string                   `json:"entity"`
+	Nodes     []map[string]interface{} `json:"nodes"`
+	Edges     []DependencyEdge         `json:"edges"`
+	Truncated bool                     `json:"truncated"`
 }
 
-func TraceDependencies(ctx context.Context, db *sql.DB, entityName string, direction string, maxDepth int) (*TraceResult, error) {
+func TraceDependencies(ctx context.Context, db *sql.DB, entityName string, direction string, maxDepth int, maxNodes int) (*TraceResult, error) {
+	if maxDepth <= 0 {
+		maxDepth = 5
+	}
+	if maxNodes <= 0 {
+		maxNodes = 100
+	}
+
 	// Simplified recursive CTE for tracing dependencies
 	query := `
 		WITH RECURSIVE trace(id, depth) AS (
@@ -74,7 +83,11 @@ func TraceDependencies(ctx context.Context, db *sql.DB, entityName string, direc
 	}
 	defer rows.Close()
 
-	result := &TraceResult{Entity: entityName}
+	result := &TraceResult{
+		Entity: entityName,
+		Nodes:  []map[string]interface{}{},
+		Edges:  []DependencyEdge{},
+	}
 	nodeSet := make(map[int64]bool)
 
 	for rows.Next() {
@@ -86,9 +99,36 @@ func TraceDependencies(ctx context.Context, db *sql.DB, entityName string, direc
 		nodeSet[edge.SourceID] = true
 		nodeSet[edge.TargetID] = true
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	nodeIDs := make([]int64, 0, len(nodeSet))
+	for nodeID := range nodeSet {
+		nodeIDs = append(nodeIDs, nodeID)
+	}
+	sort.Slice(nodeIDs, func(i, j int) bool { return nodeIDs[i] < nodeIDs[j] })
+
+	if len(nodeIDs) > maxNodes {
+		result.Truncated = true
+		allowed := make(map[int64]struct{}, maxNodes)
+		for _, nodeID := range nodeIDs[:maxNodes] {
+			allowed[nodeID] = struct{}{}
+		}
+		filteredEdges := make([]DependencyEdge, 0, len(result.Edges))
+		for _, edge := range result.Edges {
+			_, okSource := allowed[edge.SourceID]
+			_, okTarget := allowed[edge.TargetID]
+			if okSource && okTarget {
+				filteredEdges = append(filteredEdges, edge)
+			}
+		}
+		result.Edges = filteredEdges
+		nodeIDs = nodeIDs[:maxNodes]
+	}
 
 	// Fetch node details
-	for nodeID := range nodeSet {
+	for _, nodeID := range nodeIDs {
 		var nodeType, displayName string
 		err := db.QueryRowContext(ctx, "SELECT type, display_name FROM kg_nodes WHERE id = ?", nodeID).Scan(&nodeType, &displayName)
 		if err == nil {
