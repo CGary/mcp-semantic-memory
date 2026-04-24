@@ -3,7 +3,8 @@ package search
 import (
         "context"
         "database/sql"
-        "strings"
+
+        "github.com/hsme/core/src/core/indexer"
 )
 func GraphSearch(ctx context.Context, db *sql.DB, query string, limit int) ([]SearchResult, error) {
 	// Minimal graph search logic: find nodes matching name and return their evidence memories
@@ -52,13 +53,16 @@ func TraceDependencies(ctx context.Context, db *sql.DB, entityName string, direc
                 maxNodes = 100
         }
 
-        // Normalización del término de búsqueda
-        searchName := strings.ToLower(strings.TrimSpace(entityName))
+        // Simetría Semántica: Usamos el mismo algoritmo que el indexador
+        searchName, _ := indexer.CanonicalizeName(entityName)
+        fuzzyName := "%" + entityName + "%"
 
-        // CTE Recursivo: travesía bidireccional robusta
+        // CTE Recursivo: travesía bidireccional robusta con fallback de nombre
         query := `
                 WITH RECURSIVE trace(id, depth) AS (
-                        SELECT id, 0 FROM kg_nodes WHERE canonical_name = ?
+                        SELECT id, 0 FROM kg_nodes 
+                        WHERE canonical_name = ? 
+                        OR display_name LIKE ? -- Fallback si el canónico falla
                         UNION
                         SELECT 
                                 CASE WHEN t.id = e.source_node_id THEN e.target_node_id ELSE e.source_node_id END,
@@ -72,9 +76,9 @@ func TraceDependencies(ctx context.Context, db *sql.DB, entityName string, direc
                              (? = 'upstream' AND t.id = e.target_node_id)
                         )
                 )
-                SELECT id FROM trace
+                SELECT DISTINCT id FROM trace
         `
-        rows, err := db.QueryContext(ctx, query, searchName, maxDepth, direction, direction, direction)
+        rows, err := db.QueryContext(ctx, query, searchName, fuzzyName, maxDepth, direction, direction, direction)
         if err != nil {
                 return nil, err
         }
