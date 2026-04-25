@@ -81,7 +81,7 @@ func TestLeasingLogic(t *testing.T) {
 		t.Fatalf("Failed to insert memory: %v", err)
 	}
 
-	w := worker.NewWorker(db, &mockEmbedder{dim: 768}, &mockGraphExtractor{})
+	w := worker.NewWorker(db, &mockEmbedder{dim: 768}, &mockGraphExtractor{}, nil)
 
 	// 1. Test leasing a pending task
 	_, err = db.Exec("INSERT INTO async_tasks (memory_id, task_type, status) VALUES (1, 'embed', 'pending')")
@@ -155,7 +155,7 @@ func TestWorkerExecution(t *testing.T) {
 		t.Fatalf("Failed to insert chunk: %v", err)
 	}
 
-	w := worker.NewWorker(db, &mockEmbedder{dim: 768}, &mockGraphExtractor{})
+	w := worker.NewWorker(db, &mockEmbedder{dim: 768}, &mockGraphExtractor{}, nil)
 
 	// Test Embed Task Execution
 	_, err = db.Exec("INSERT INTO async_tasks (memory_id, task_type, status) VALUES (1, 'embed', 'pending')")
@@ -247,7 +247,7 @@ func TestWorkerExecution_RechunksOversizedEmbedInput(t *testing.T) {
 		t.Fatalf("Failed to insert oversized chunk: %v", err)
 	}
 
-	w := worker.NewWorker(db, &flakyLengthEmbedder{dim: 768, maxChars: 3200}, &mockGraphExtractor{})
+	w := worker.NewWorker(db, &flakyLengthEmbedder{dim: 768, maxChars: 3200}, &mockGraphExtractor{}, nil)
 
 	_, err = db.Exec("INSERT INTO async_tasks (memory_id, task_type, status) VALUES (1, 'embed', 'pending')")
 	if err != nil {

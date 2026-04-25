@@ -2,15 +2,17 @@
 
 HSME es un motor de memoria semántica híbrida de alto rendimiento diseñado para proporcionar una base de conocimiento persistente y con trazabilidad para agentes de IA. Combina la velocidad de la búsqueda léxica, la profundidad de la búsqueda semántica y la estructura de un Grafo de Conocimiento técnico.
 
-## 🏗️ Arquitectura de Doble Proceso
+## 🏗️ Arquitectura de Tres Procesos
 
-HSME separa la interfaz de usuario de las tareas pesadas de procesamiento para garantizar una latencia mínima en el servidor MCP:
+HSME separa runtime, procesamiento semántico y mantenimiento operativo para mantener baja latencia y permitir observabilidad escalable:
 
-1.  **MCP Server (`hsme`)**: Servidor ligero que maneja las peticiones del agente vía `stdio`. Realiza búsquedas híbridas instantáneas y encola nuevas memorias.
+1.  **MCP Server (`hsme`)**: Servidor ligero que maneja las peticiones del agente vía `stdio`. Realiza búsquedas híbridas instantáneas, encola nuevas memorias y puede capturar trazas de runtime.
 2.  **Async Worker (`hsme-worker`)**: Proceso en segundo plano que consume la cola de tareas para:
     *   Generar embeddings de vectores (`nomic-embed-text`).
     *   Extraer entidades y relaciones técnicas (`phi3.5`).
     *   Construir el Grafo de Conocimiento dinámicamente.
+    *   Emitir observabilidad sobre leasing y ejecución de tareas.
+3.  **Ops Runner (`hsme-ops`)**: Runner dedicado para mantenimiento operativo y observabilidad. Ejecuta rollups, retención y consultas resumidas sin mezclar esa carga con MCP ni con el worker semántico.
 
 ## 🚀 Instalación y Setup
 
@@ -32,6 +34,8 @@ El motor utiliza **SQLite** con los módulos **FTS5** y **sqlite-vec** integrado
 ### Comandos de Just
 - `just serve`: Inicia el servidor MCP (Interactivo).
 - `just work-bg`: Lanza el procesador de grafos y embeddings en segundo plano (Log: `worker_new.log`).
+- `just ops`: Ejecuta un ciclo de mantenimiento de observabilidad (rollups + retención).
+- `just ops-loop`: Corre el runner de operaciones en modo continuo.
 - `just status`: Muestra una instantánea del progreso del procesamiento y salud del grafo.
 - `just watch-status`: Monitoreo en tiempo real del procesamiento de la cola.
 - `just backup`: Crea un backup atómico compatible con el modo WAL de SQLite.

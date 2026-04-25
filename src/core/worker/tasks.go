@@ -1,14 +1,15 @@
 package worker
 
 import (
-        "context"
-        "database/sql"
-        "fmt"
-        "os"
-        "strings"
-        "time"
+	"context"
+	"database/sql"
+	"fmt"
 	vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
 	"github.com/hsme/core/src/core/indexer"
+	"github.com/hsme/core/src/observability"
+	"os"
+	"strings"
+	"time"
 )
 
 // Enums del extractor — cualquier cosa fuera de esto se descarta.
@@ -61,13 +62,15 @@ type Worker struct {
 	db             *sql.DB
 	Embedder       Embedder
 	GraphExtractor GraphExtractor
+	Recorder       observability.Recorder
 }
 
-func NewWorker(db *sql.DB, embedder Embedder, extractor GraphExtractor) *Worker {
+func NewWorker(db *sql.DB, embedder Embedder, extractor GraphExtractor, recorder observability.Recorder) *Worker {
 	return &Worker{
 		db:             db,
 		Embedder:       embedder,
 		GraphExtractor: extractor,
+		Recorder:       recorder,
 	}
 }
 
@@ -117,18 +120,76 @@ func (w *Worker) LeaseNextTask(ctx context.Context) (*AsyncTask, error) {
 }
 
 func (w *Worker) ExecuteTask(ctx context.Context, task *AsyncTask) error {
+	trace := observability.TraceContext{}
+	if w.Recorder != nil && w.Recorder.Enabled() {
+		trace, ctx = w.Recorder.StartTrace(ctx, observability.StartTraceArgs{
+			TraceKind: "worker_task",
+			Component: "worker",
+			Operation: "execute_task",
+			TaskID:    task.ID,
+			TaskType:  task.TaskType,
+			MemoryID:  task.MemoryID,
+			StartedAt: time.Now().UTC(),
+		})
+		defer func() {
+			if r := recover(); r != nil {
+				_ = w.Recorder.RecordError(ctx, observability.ErrorEvent{
+					TraceID:   trace.TraceID,
+					Component: "worker",
+					Operation: "execute_task",
+					TaskID:    task.ID,
+					TaskType:  task.TaskType,
+					MemoryID:  task.MemoryID,
+					Severity:  "error",
+					Message:   fmt.Sprintf("panic: %v", r),
+				})
+				_ = w.Recorder.FinishTrace(ctx, trace, observability.TraceResult{Status: "error", ErrorMessage: fmt.Sprintf("panic: %v", r), EndedAt: time.Now().UTC()})
+				panic(r)
+			}
+		}()
+	}
+
 	var content string
+	loadStarted := time.Now().UTC()
 	err := w.db.QueryRowContext(ctx, "SELECT raw_content FROM memories WHERE id = ?", task.MemoryID).Scan(&content)
+	if w.Recorder != nil && w.Recorder.Enabled() {
+		span, _ := w.Recorder.StartSpan(ctx, observability.StartSpanArgs{TraceID: trace.TraceID, Component: "worker", Operation: "execute_task", StageName: "load_memory", StartedAt: loadStarted})
+		result := observability.SpanResult{Status: "ok", EndedAt: time.Now().UTC(), RowsRead: 1}
+		if err != nil {
+			result.Status = "error"
+			result.ErrorMessage = err.Error()
+		}
+		_ = w.Recorder.FinishSpan(ctx, span, result)
+	}
 	if err != nil {
+		if w.Recorder != nil && w.Recorder.Enabled() {
+			_ = w.Recorder.RecordError(ctx, observability.ErrorEvent{TraceID: trace.TraceID, Component: "worker", Operation: "load_memory", TaskID: task.ID, TaskType: task.TaskType, MemoryID: task.MemoryID, Severity: "error", Message: err.Error()})
+			_ = w.Recorder.FinishTrace(ctx, trace, observability.TraceResult{Status: "error", ErrorMessage: err.Error(), EndedAt: time.Now().UTC()})
+		}
 		return fmt.Errorf("failed to get memory content: %w", err)
 	}
 
 	if task.TaskType == "embed" {
+		stageStarted := time.Now().UTC()
 		chunks, err := w.loadChunks(ctx, task.MemoryID)
+		if w.Recorder != nil && w.Recorder.Enabled() {
+			span, _ := w.Recorder.StartSpan(ctx, observability.StartSpanArgs{TraceID: trace.TraceID, Component: "worker", Operation: "embed", StageName: "load_chunks", StartedAt: stageStarted})
+			result := observability.SpanResult{Status: "ok", EndedAt: time.Now().UTC(), RowsRead: int64(len(chunks))}
+			if err != nil {
+				result.Status = "error"
+				result.ErrorMessage = err.Error()
+			}
+			_ = w.Recorder.FinishSpan(ctx, span, result)
+		}
 		if err != nil {
+			if w.Recorder != nil && w.Recorder.Enabled() {
+				_ = w.Recorder.RecordError(ctx, observability.ErrorEvent{TraceID: trace.TraceID, Component: "worker", Operation: "load_chunks", TaskID: task.ID, TaskType: task.TaskType, MemoryID: task.MemoryID, Severity: "error", Message: err.Error()})
+				_ = w.Recorder.FinishTrace(ctx, trace, observability.TraceResult{Status: "error", ErrorMessage: err.Error(), EndedAt: time.Now().UTC()})
+			}
 			return fmt.Errorf("failed to get chunks: %w", err)
 		}
 
+		embedStageStarted := time.Now().UTC()
 		for i := 0; i < len(chunks); i++ {
 			chunk := chunks[i]
 			vector, err := w.Embedder.GenerateVector(ctx, chunk.Text)
@@ -160,9 +221,20 @@ func (w *Worker) ExecuteTask(ctx context.Context, task *AsyncTask) error {
 				return fmt.Errorf("failed to insert vector: %w", err)
 			}
 		}
+		if w.Recorder != nil && w.Recorder.Enabled() {
+			span, _ := w.Recorder.StartSpan(ctx, observability.StartSpanArgs{TraceID: trace.TraceID, Component: "worker", Operation: "embed", StageName: "embed_and_persist_chunks", StartedAt: embedStageStarted})
+			_ = w.Recorder.FinishSpan(ctx, span, observability.SpanResult{Status: "ok", EndedAt: time.Now().UTC(), RowsRead: int64(len(chunks)), RowsWritten: int64(len(chunks))})
+		}
 	} else if task.TaskType == "graph_extract" {
+		graphStageStarted := time.Now().UTC()
 		kg, err := w.GraphExtractor.ExtractEntities(ctx, content)
 		if err != nil {
+			if w.Recorder != nil && w.Recorder.Enabled() {
+				span, _ := w.Recorder.StartSpan(ctx, observability.StartSpanArgs{TraceID: trace.TraceID, Component: "worker", Operation: "graph_extract", StageName: "extract_graph", StartedAt: graphStageStarted})
+				_ = w.Recorder.FinishSpan(ctx, span, observability.SpanResult{Status: "error", EndedAt: time.Now().UTC(), ErrorMessage: err.Error()})
+				_ = w.Recorder.RecordError(ctx, observability.ErrorEvent{TraceID: trace.TraceID, Component: "worker", Operation: "graph_extract", TaskID: task.ID, TaskType: task.TaskType, MemoryID: task.MemoryID, Severity: "error", Message: err.Error()})
+				_ = w.Recorder.FinishTrace(ctx, trace, observability.TraceResult{Status: "error", ErrorMessage: err.Error(), EndedAt: time.Now().UTC()})
+			}
 			return fmt.Errorf("failed to extract entities: %w", err)
 		}
 
@@ -171,69 +243,83 @@ func (w *Worker) ExecuteTask(ctx context.Context, task *AsyncTask) error {
 
 		// 1. PRIMERA PASADA: Insertar todos los nodos y poblar mapa de IDs
 		for _, node := range kg.Nodes {
-		        nodeType := indexer.CanonicalizeType(node.Type)
-		        if _, ok := allowedNodeTypes[nodeType]; !ok {
-		                continue
-		        }
-		        canonical, display := indexer.CanonicalizeName(node.Name)
-		        if canonical == "" {
-		                continue
-		        }
+			nodeType := indexer.CanonicalizeType(node.Type)
+			if _, ok := allowedNodeTypes[nodeType]; !ok {
+				continue
+			}
+			canonical, display := indexer.CanonicalizeName(node.Name)
+			if canonical == "" {
+				continue
+			}
 
-		        var nodeID int64
-		        err := w.db.QueryRowContext(ctx, `
+			var nodeID int64
+			err := w.db.QueryRowContext(ctx, `
 		                INSERT INTO kg_nodes(type, canonical_name, display_name)
 		                VALUES(?, ?, ?)
 		                ON CONFLICT(type, canonical_name)
 		                DO UPDATE SET display_name=excluded.display_name
 		                RETURNING id`,
-		                nodeType, canonical, display).Scan(&nodeID)
-		        if err != nil {
-		                _, _ = w.db.ExecContext(ctx, "INSERT OR IGNORE INTO kg_nodes(type, canonical_name, display_name) VALUES(?, ?, ?)", nodeType, canonical, display)
-		                _ = w.db.QueryRowContext(ctx, "SELECT id FROM kg_nodes WHERE type = ? AND canonical_name = ?", nodeType, canonical).Scan(&nodeID)
-		        }
-		        nodeIDs[strings.ToLower(strings.TrimSpace(node.Name))] = nodeID
-		        nodeIDs[canonical] = nodeID
+				nodeType, canonical, display).Scan(&nodeID)
+			if err != nil {
+				_, _ = w.db.ExecContext(ctx, "INSERT OR IGNORE INTO kg_nodes(type, canonical_name, display_name) VALUES(?, ?, ?)", nodeType, canonical, display)
+				_ = w.db.QueryRowContext(ctx, "SELECT id FROM kg_nodes WHERE type = ? AND canonical_name = ?", nodeType, canonical).Scan(&nodeID)
+			}
+			nodeIDs[strings.ToLower(strings.TrimSpace(node.Name))] = nodeID
+			nodeIDs[canonical] = nodeID
 		}
 
 		// 2. SEGUNDA PASADA: Insertar relaciones ahora que todos los IDs existen
 		for _, edge := range kg.Edges {
-		        relation := indexer.CanonicalizeType(edge.Relation)
-		        if _, ok := allowedRelationTypes[relation]; !ok {
-		                continue
-		        }
+			relation := indexer.CanonicalizeType(edge.Relation)
+			if _, ok := allowedRelationTypes[relation]; !ok {
+				continue
+			}
 
-		        srcKey := strings.ToLower(strings.TrimSpace(edge.Source))
-		        tgtKey := strings.ToLower(strings.TrimSpace(edge.Target))
+			srcKey := strings.ToLower(strings.TrimSpace(edge.Source))
+			tgtKey := strings.ToLower(strings.TrimSpace(edge.Target))
 
-		        sourceID, okS := nodeIDs[srcKey]
-		        if !okS {
-		                canonical, _ := indexer.CanonicalizeName(edge.Source)
-		                _ = w.db.QueryRowContext(ctx, "SELECT id FROM kg_nodes WHERE canonical_name = ?", canonical).Scan(&sourceID)
-		                okS = sourceID > 0
-		        }
+			sourceID, okS := nodeIDs[srcKey]
+			if !okS {
+				canonical, _ := indexer.CanonicalizeName(edge.Source)
+				_ = w.db.QueryRowContext(ctx, "SELECT id FROM kg_nodes WHERE canonical_name = ?", canonical).Scan(&sourceID)
+				okS = sourceID > 0
+			}
 
-		        targetID, okT := nodeIDs[tgtKey]
-		        if !okT {
-		                canonical, _ := indexer.CanonicalizeName(edge.Target)
-		                _ = w.db.QueryRowContext(ctx, "SELECT id FROM kg_nodes WHERE canonical_name = ?", canonical).Scan(&targetID)
-		                okT = targetID > 0
-		        }
+			targetID, okT := nodeIDs[tgtKey]
+			if !okT {
+				canonical, _ := indexer.CanonicalizeName(edge.Target)
+				_ = w.db.QueryRowContext(ctx, "SELECT id FROM kg_nodes WHERE canonical_name = ?", canonical).Scan(&targetID)
+				okT = targetID > 0
+			}
 
-		        if okS && okT {
-		                _, err = w.db.ExecContext(ctx, `
+			if okS && okT {
+				_, err = w.db.ExecContext(ctx, `
 		                        INSERT OR IGNORE INTO kg_edge_evidence(source_node_id, target_node_id, relation_type, memory_id)
 		                        VALUES(?, ?, ?, ?)`,
-		                        sourceID, targetID, relation, task.MemoryID)
-		                if err != nil {
-		                        fmt.Fprintf(os.Stderr, "[worker] error guardando relación: %v\n", err)
-		                }
-		        } else {
-		                fmt.Fprintf(os.Stderr, "[worker] relación descartada: fuente(%s:%v), destino(%s:%v)\n", edge.Source, okS, edge.Target, okT)
-		        }
-		}	}
+					sourceID, targetID, relation, task.MemoryID)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "[worker] error guardando relación: %v\n", err)
+				}
+			} else {
+				fmt.Fprintf(os.Stderr, "[worker] relación descartada: fuente(%s:%v), destino(%s:%v)\n", edge.Source, okS, edge.Target, okT)
+			}
+		}
+		if w.Recorder != nil && w.Recorder.Enabled() {
+			span, _ := w.Recorder.StartSpan(ctx, observability.StartSpanArgs{TraceID: trace.TraceID, Component: "worker", Operation: "graph_extract", StageName: "extract_and_persist_graph", StartedAt: graphStageStarted})
+			_ = w.Recorder.FinishSpan(ctx, span, observability.SpanResult{Status: "ok", EndedAt: time.Now().UTC(), RowsWritten: int64(len(kg.Nodes) + len(kg.Edges))})
+		}
+	}
 
 	_, err = w.db.ExecContext(ctx, "UPDATE async_tasks SET status = 'completed', completed_at = ? WHERE id = ?", time.Now().Format(time.RFC3339), task.ID)
+	if w.Recorder != nil && w.Recorder.Enabled() {
+		result := observability.TraceResult{Status: "ok", EndedAt: time.Now().UTC()}
+		if err != nil {
+			result.Status = "error"
+			result.ErrorMessage = err.Error()
+			_ = w.Recorder.RecordError(ctx, observability.ErrorEvent{TraceID: trace.TraceID, Component: "worker", Operation: "complete_task", TaskID: task.ID, TaskType: task.TaskType, MemoryID: task.MemoryID, Severity: "error", Message: err.Error()})
+		}
+		_ = w.Recorder.FinishTrace(ctx, trace, result)
+	}
 	return err
 }
 

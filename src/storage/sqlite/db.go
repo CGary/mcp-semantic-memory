@@ -137,6 +137,198 @@ CREATE TABLE IF NOT EXISTS kg_edge_evidence (
 CREATE INDEX IF NOT EXISTS idx_edge_source    ON kg_edge_evidence(source_node_id);
 CREATE INDEX IF NOT EXISTS idx_edge_target    ON kg_edge_evidence(target_node_id);
 CREATE INDEX IF NOT EXISTS idx_edge_memory    ON kg_edge_evidence(memory_id);
+
+-- 9. Observability traces
+CREATE TABLE IF NOT EXISTS obs_traces (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trace_id TEXT NOT NULL UNIQUE,
+    trace_kind TEXT NOT NULL CHECK (trace_kind IN ('mcp_request', 'worker_task', 'maintenance')),
+    parent_trace_id TEXT,
+    request_id TEXT,
+    tool_name TEXT,
+    task_id INTEGER,
+    task_type TEXT,
+    memory_id INTEGER,
+    component TEXT NOT NULL,
+    operation_name TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('ok', 'error', 'cancelled', 'timeout')),
+    obs_level TEXT NOT NULL CHECK (obs_level IN ('off', 'basic', 'debug', 'trace')),
+    sampled INTEGER NOT NULL DEFAULT 0 CHECK (sampled IN (0, 1)),
+    started_at_utc TEXT NOT NULL,
+    ended_at_utc TEXT NOT NULL,
+    duration_us INTEGER NOT NULL DEFAULT 0 CHECK (duration_us >= 0),
+    error_code TEXT,
+    error_message TEXT,
+    meta_json TEXT,
+    created_at_utc TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_obs_traces_started_at ON obs_traces(started_at_utc);
+CREATE INDEX IF NOT EXISTS idx_obs_traces_kind_started ON obs_traces(trace_kind, started_at_utc);
+CREATE INDEX IF NOT EXISTS idx_obs_traces_tool_started ON obs_traces(tool_name, started_at_utc);
+CREATE INDEX IF NOT EXISTS idx_obs_traces_task_started ON obs_traces(task_type, started_at_utc);
+CREATE INDEX IF NOT EXISTS idx_obs_traces_status_started ON obs_traces(status, started_at_utc);
+
+-- 10. Observability spans
+CREATE TABLE IF NOT EXISTS obs_spans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trace_id TEXT NOT NULL,
+    span_id TEXT NOT NULL,
+    parent_span_id TEXT,
+    component TEXT NOT NULL,
+    operation_name TEXT NOT NULL,
+    stage_name TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('ok', 'error', 'cancelled', 'timeout')),
+    started_at_utc TEXT NOT NULL,
+    ended_at_utc TEXT NOT NULL,
+    duration_us INTEGER NOT NULL DEFAULT 0 CHECK (duration_us >= 0),
+    queue_delay_us INTEGER,
+    rows_read INTEGER,
+    rows_written INTEGER,
+    bytes_in INTEGER,
+    bytes_out INTEGER,
+    error_code TEXT,
+    error_message TEXT,
+    meta_json TEXT,
+    created_at_utc TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    UNIQUE(trace_id, span_id),
+    FOREIGN KEY(trace_id) REFERENCES obs_traces(trace_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_obs_spans_trace_started ON obs_spans(trace_id, started_at_utc);
+CREATE INDEX IF NOT EXISTS idx_obs_spans_component_stage ON obs_spans(component, stage_name, started_at_utc);
+CREATE INDEX IF NOT EXISTS idx_obs_spans_duration ON obs_spans(duration_us, started_at_utc);
+
+-- 11. Observability discrete events
+CREATE TABLE IF NOT EXISTS obs_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trace_id TEXT,
+    span_id TEXT,
+    event_kind TEXT NOT NULL CHECK (event_kind IN ('error', 'slow_operation', 'state_transition', 'diagnostic')),
+    component TEXT NOT NULL,
+    operation_name TEXT NOT NULL,
+    tool_name TEXT,
+    task_id INTEGER,
+    task_type TEXT,
+    memory_id INTEGER,
+    severity TEXT NOT NULL CHECK (severity IN ('debug', 'info', 'warn', 'error')),
+    threshold_us INTEGER,
+    observed_us INTEGER,
+    message TEXT NOT NULL,
+    details_json TEXT,
+    created_at_utc TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    FOREIGN KEY(trace_id) REFERENCES obs_traces(trace_id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_obs_events_created ON obs_events(created_at_utc);
+CREATE INDEX IF NOT EXISTS idx_obs_events_kind_created ON obs_events(event_kind, created_at_utc);
+CREATE INDEX IF NOT EXISTS idx_obs_events_component_created ON obs_events(component, created_at_utc);
+CREATE INDEX IF NOT EXISTS idx_obs_events_tool_created ON obs_events(tool_name, created_at_utc);
+CREATE INDEX IF NOT EXISTS idx_obs_events_task_created ON obs_events(task_type, created_at_utc);
+CREATE INDEX IF NOT EXISTS idx_obs_events_trace ON obs_events(trace_id, created_at_utc);
+
+-- 12. Metric rollups
+CREATE TABLE IF NOT EXISTS obs_metric_rollups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bucket_level TEXT NOT NULL CHECK (bucket_level IN ('minute', 'hour', 'day')),
+    bucket_start_utc TEXT NOT NULL,
+    component TEXT NOT NULL,
+    operation_name TEXT NOT NULL,
+    tool_name TEXT,
+    task_type TEXT,
+    trace_kind TEXT NOT NULL CHECK (trace_kind IN ('mcp_request', 'worker_task', 'maintenance')),
+    total_count INTEGER NOT NULL DEFAULT 0,
+    success_count INTEGER NOT NULL DEFAULT 0,
+    error_count INTEGER NOT NULL DEFAULT 0,
+    slow_count INTEGER NOT NULL DEFAULT 0,
+    sampled_count INTEGER NOT NULL DEFAULT 0,
+    duration_total_us INTEGER NOT NULL DEFAULT 0,
+    duration_max_us INTEGER NOT NULL DEFAULT 0,
+    p50_us INTEGER,
+    p95_us INTEGER,
+    p99_us INTEGER,
+    queue_delay_total_us INTEGER NOT NULL DEFAULT 0,
+    bytes_in_total INTEGER NOT NULL DEFAULT 0,
+    bytes_out_total INTEGER NOT NULL DEFAULT 0,
+    rows_read_total INTEGER NOT NULL DEFAULT 0,
+    rows_written_total INTEGER NOT NULL DEFAULT 0,
+    last_source_event_at_utc TEXT,
+    created_at_utc TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at_utc TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_obs_metric_rollups_dims
+ON obs_metric_rollups(bucket_level, bucket_start_utc, component, operation_name, ifnull(tool_name, ''), ifnull(task_type, ''), trace_kind);
+
+-- 13. Retention policies
+CREATE TABLE IF NOT EXISTS obs_retention_policies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    policy_name TEXT NOT NULL UNIQUE,
+    scope_kind TEXT NOT NULL CHECK (scope_kind IN ('events', 'traces', 'spans', 'rollups')),
+    bucket_level TEXT CHECK (bucket_level IN ('minute', 'hour', 'day')),
+    keep_days INTEGER NOT NULL CHECK (keep_days >= 0),
+    sample_rate REAL CHECK (sample_rate IS NULL OR (sample_rate >= 0.0 AND sample_rate <= 1.0)),
+    slow_threshold_us INTEGER,
+    enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+    updated_at_utc TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+-- 14. Rollup/checkpoint jobs
+CREATE TABLE IF NOT EXISTS obs_rollup_jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_name TEXT NOT NULL UNIQUE,
+    source_scope TEXT NOT NULL CHECK (source_scope IN ('raw_to_minute', 'minute_to_hour', 'hour_to_day', 'retention_cleanup')),
+    last_completed_bucket_start_utc TEXT,
+    last_run_started_at_utc TEXT,
+    last_run_finished_at_utc TEXT,
+    last_status TEXT NOT NULL DEFAULT 'idle' CHECK (last_status IN ('idle', 'running', 'ok', 'error')),
+    last_error TEXT,
+    updated_at_utc TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+-- 15. Operator views
+CREATE VIEW IF NOT EXISTS obs_recent_slow_operations AS
+SELECT
+    e.created_at_utc,
+    e.component,
+    e.operation_name,
+    e.tool_name,
+    e.task_type,
+    e.observed_us,
+    e.threshold_us,
+    e.message,
+    e.trace_id
+FROM obs_events e
+WHERE e.event_kind = 'slow_operation';
+
+CREATE VIEW IF NOT EXISTS obs_error_events AS
+SELECT
+    e.created_at_utc,
+    e.component,
+    e.operation_name,
+    e.tool_name,
+    e.task_type,
+    e.severity,
+    e.message,
+    e.details_json,
+    e.trace_id
+FROM obs_events e
+WHERE e.event_kind = 'error';
+
+-- 16. Default policies and rollup jobs
+INSERT OR IGNORE INTO obs_retention_policies(policy_name, scope_kind, bucket_level, keep_days, sample_rate, slow_threshold_us, enabled) VALUES
+    ('raw-traces-default', 'traces', NULL, 7, 0.10, NULL, 1),
+    ('raw-spans-default', 'spans', NULL, 7, 0.10, NULL, 1),
+    ('raw-events-default', 'events', NULL, 14, 1.0, 100000, 1),
+    ('minute-rollups-default', 'rollups', 'minute', 7, NULL, NULL, 1),
+    ('hour-rollups-default', 'rollups', 'hour', 30, NULL, NULL, 1),
+    ('day-rollups-default', 'rollups', 'day', 365, NULL, NULL, 1);
+
+INSERT OR IGNORE INTO obs_rollup_jobs(job_name, source_scope, last_status) VALUES
+    ('raw_to_minute', 'raw_to_minute', 'idle'),
+    ('minute_to_hour', 'minute_to_hour', 'idle'),
+    ('hour_to_day', 'hour_to_day', 'idle'),
+    ('retention_cleanup', 'retention_cleanup', 'idle');
 `
 
 func InitDB(path string) (*sql.DB, error) {

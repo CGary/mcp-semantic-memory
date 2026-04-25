@@ -13,6 +13,7 @@ import (
 	"github.com/hsme/core/src/core/inference/ollama"
 	"github.com/hsme/core/src/core/search"
 	"github.com/hsme/core/src/mcp"
+	"github.com/hsme/core/src/observability"
 	"github.com/hsme/core/src/storage/sqlite"
 )
 
@@ -89,6 +90,9 @@ func main() {
 	}
 
 	srv := mcp.NewServer()
+	obsCfg := observability.LoadConfigFromEnv()
+	recorder := observability.NewSQLiteRecorder(db, obsCfg)
+	srv.SetRecorder(recorder)
 
 	// Registro de herramienta: search_fuzzy
 	srv.RegisterTool("search_fuzzy", "Search memory using hybrid fuzzy matching (Lexical + Semantic)",
