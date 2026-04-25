@@ -270,8 +270,31 @@ func VectorSearch(ctx context.Context, db *sql.DB, vector []float32, limit int) 
 }
 
 func ExactSearch(ctx context.Context, db *sql.DB, keyword string, limit int) ([]ExactMatchResult, error) {
+	keyword = strings.TrimSpace(keyword)
+	if keyword == "" {
+		return nil, nil
+	}
+
+	seen := make(map[int64]struct{}, limit)
+	results, err := exactSearchFTS(ctx, db, keyword, limit, seen)
+	if err != nil {
+		return nil, err
+	}
+	if len(results) >= limit {
+		return results, nil
+	}
+
+	fallback, err := exactSearchSubstring(ctx, db, keyword, limit-len(results), seen)
+	if err != nil {
+		return nil, err
+	}
+	results = append(results, fallback...)
+	return results, nil
+}
+
+func exactSearchFTS(ctx context.Context, db *sql.DB, keyword string, limit int, seen map[int64]struct{}) ([]ExactMatchResult, error) {
 	safe := sanitizeFTS(keyword)
-	if safe == "" {
+	if safe == "" || limit <= 0 {
 		return nil, nil
 	}
 
@@ -281,7 +304,7 @@ func ExactSearch(ctx context.Context, db *sql.DB, keyword string, limit int) ([]
 		JOIN memory_chunks c ON c.id = f.rowid
 		WHERE f.chunk_text MATCH ?
 		ORDER BY c.memory_id, c.chunk_index
-	LIMIT ?
+		LIMIT ?
 	`, safe, limit)
 	if err != nil {
 		return nil, err
@@ -294,7 +317,43 @@ func ExactSearch(ctx context.Context, db *sql.DB, keyword string, limit int) ([]
 		if err := rows.Scan(&res.MemoryID, &res.ChunkID, &res.ChunkIndex, &res.Text); err != nil {
 			return nil, err
 		}
+		seen[res.ChunkID] = struct{}{}
 		results = append(results, res)
+	}
+	return results, nil
+}
+
+func exactSearchSubstring(ctx context.Context, db *sql.DB, keyword string, limit int, seen map[int64]struct{}) ([]ExactMatchResult, error) {
+	if limit <= 0 {
+		return nil, nil
+	}
+
+	rows, err := db.QueryContext(ctx, `
+		SELECT c.memory_id, c.id, c.chunk_index, c.chunk_text
+		FROM memory_chunks c
+		WHERE instr(lower(c.chunk_text), lower(?)) > 0
+		ORDER BY c.memory_id, c.chunk_index
+		LIMIT ?
+	`, keyword, limit+len(seen))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []ExactMatchResult
+	for rows.Next() {
+		var res ExactMatchResult
+		if err := rows.Scan(&res.MemoryID, &res.ChunkID, &res.ChunkIndex, &res.Text); err != nil {
+			return nil, err
+		}
+		if _, ok := seen[res.ChunkID]; ok {
+			continue
+		}
+		seen[res.ChunkID] = struct{}{}
+		results = append(results, res)
+		if len(results) >= limit {
+			break
+		}
 	}
 	return results, nil
 }

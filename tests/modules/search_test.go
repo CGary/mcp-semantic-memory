@@ -145,6 +145,57 @@ func TestExactSearchReturnsChunkMatches(t *testing.T) {
 	}
 }
 
+func TestExactSearchFallsBackToLiteralSubstringInsideToken(t *testing.T) {
+	dbPath := "test_search_exact_substring.db"
+	defer os.Remove(dbPath)
+
+	db, err := sqlite.InitDB(dbPath)
+	if err != nil {
+		t.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer db.Close()
+
+	_, err = indexer.StoreContext(db, "timeout_in_worker happened in src/worker/loop.go", "note", nil, false)
+	if err != nil {
+		t.Fatalf("StoreContext failed: %v", err)
+	}
+
+	results, err := search.ExactSearch(context.Background(), db, "timeout_in_wor", 10)
+	if err != nil {
+		t.Fatalf("ExactSearch failed: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("Expected one substring fallback result, got %#v", results)
+	}
+	if !strings.Contains(strings.ToLower(results[0].Text), "timeout_in_worker") {
+		t.Fatalf("Expected fallback result to include original token, got %#v", results[0])
+	}
+}
+
+func TestExactSearchPrefersFTSAndDeduplicatesFallback(t *testing.T) {
+	dbPath := "test_search_exact_hybrid.db"
+	defer os.Remove(dbPath)
+
+	db, err := sqlite.InitDB(dbPath)
+	if err != nil {
+		t.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer db.Close()
+
+	_, err = indexer.StoreContext(db, "timeout timeout_in_worker timeout", "note", nil, false)
+	if err != nil {
+		t.Fatalf("StoreContext failed: %v", err)
+	}
+
+	results, err := search.ExactSearch(context.Background(), db, "timeout", 10)
+	if err != nil {
+		t.Fatalf("ExactSearch failed: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("Expected deduplicated exact search result, got %#v", results)
+	}
+}
+
 func TestTraceDependenciesUsesEmptyArraysAndTruncation(t *testing.T) {
 	dbPath := "test_trace_dependencies.db"
 	defer os.Remove(dbPath)
