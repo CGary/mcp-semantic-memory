@@ -1,7 +1,7 @@
 {
-  "event_count": 7,
-  "last_event_id": "01KQ1FJTMC1QYWF03ZVXSZFRYM",
-  "materialized_at": "2026-04-25T04:50:18.892986+00:00",
+  "event_count": 13,
+  "last_event_id": "01KQ1HCW12BW4D1HCGP4HWVXPF",
+  "materialized_at": "2026-04-25T05:22:00.866496+00:00",
   "mission_number": "",
   "mission_slug": "scalable-observability-foundation-01KQ1D4D",
   "mission_type": "software-dev",
@@ -11,46 +11,46 @@
     "canceled": 0,
     "claimed": 0,
     "done": 0,
-    "for_review": 0,
-    "in_progress": 1,
-    "in_review": 0,
-    "planned": 4
+    "for_review": 4,
+    "in_progress": 0,
+    "in_review": 1,
+    "planned": 0
   },
   "work_packages": {
     "WP01": {
-      "actor": "implement-command",
-      "force_count": 1,
-      "lane": "in_progress",
-      "last_event_id": "01KQ1FJTMC1QYWF03ZVXSZFRYM",
-      "last_transition_at": "2026-04-25T04:50:18.892986+00:00"
+      "actor": "codex",
+      "force_count": 2,
+      "lane": "in_review",
+      "last_event_id": "01KQ1HCW12BW4D1HCGP4HWVXPF",
+      "last_transition_at": "2026-04-25T05:22:00.866496+00:00"
     },
     "WP02": {
-      "actor": "finalize-tasks",
-      "force_count": 1,
-      "lane": "planned",
-      "last_event_id": "01KQ1FJDCY20PVRX6YNC7P289W",
-      "last_transition_at": "2026-04-25T04:50:05.342063+00:00"
+      "actor": "codex",
+      "force_count": 2,
+      "lane": "for_review",
+      "last_event_id": "01KQ1H9921BN0BKPNRBWEBY81T",
+      "last_transition_at": "2026-04-25T05:20:03.137678+00:00"
     },
     "WP03": {
-      "actor": "finalize-tasks",
-      "force_count": 1,
-      "lane": "planned",
-      "last_event_id": "01KQ1FJDD4KJA9ECMPJMNKZ01B",
-      "last_transition_at": "2026-04-25T04:50:05.348848+00:00"
+      "actor": "codex",
+      "force_count": 2,
+      "lane": "for_review",
+      "last_event_id": "01KQ1H99EGDP9FABEH182V1EEE",
+      "last_transition_at": "2026-04-25T05:20:03.536663+00:00"
     },
     "WP04": {
-      "actor": "finalize-tasks",
-      "force_count": 1,
-      "lane": "planned",
-      "last_event_id": "01KQ1FJDDCTVV0V3ANS9ATT3R6",
-      "last_transition_at": "2026-04-25T04:50:05.356159+00:00"
+      "actor": "codex",
+      "force_count": 2,
+      "lane": "for_review",
+      "last_event_id": "01KQ1H99VDAKFNH26Z4VQQ3SZ5",
+      "last_transition_at": "2026-04-25T05:20:03.949942+00:00"
     },
     "WP05": {
-      "actor": "finalize-tasks",
-      "force_count": 1,
-      "lane": "planned",
-      "last_event_id": "01KQ1FJDDJQYVF14JW1TE5EGS2",
-      "last_transition_at": "2026-04-25T04:50:05.362850+00:00"
+      "actor": "codex",
+      "force_count": 2,
+      "lane": "for_review",
+      "last_event_id": "01KQ1H9A7R5ZM24AQ9T4PEZ4PN",
+      "last_transition_at": "2026-04-25T05:20:04.344529+00:00"
     }
   }
 }
