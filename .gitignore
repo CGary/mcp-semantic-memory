@@ -1,6 +1,7 @@
 # Binarios y ejecutables
 hsme
 hsme-worker
+hsme-ops
 bin/
 *.exe
 *.so
