@@ -1,7 +1,7 @@
 {
-  "event_count": 18,
-  "last_event_id": "01KQ1HDZMEM7X3YSSZ3R10H8DR",
-  "materialized_at": "2026-04-25T05:22:37.326054+00:00",
+  "event_count": 19,
+  "last_event_id": "01KQ1HE0CYPJPMM533T2Z70D03",
+  "materialized_at": "2026-04-25T05:22:38.110313+00:00",
   "mission_number": "",
   "mission_slug": "scalable-observability-foundation-01KQ1D4D",
   "mission_type": "software-dev",
@@ -11,9 +11,9 @@
     "canceled": 0,
     "claimed": 0,
     "done": 0,
-    "for_review": 2,
+    "for_review": 1,
     "in_progress": 0,
-    "in_review": 0,
+    "in_review": 1,
     "planned": 0
   },
   "work_packages": {
@@ -41,9 +41,9 @@
     "WP04": {
       "actor": "codex",
       "force_count": 2,
-      "lane": "for_review",
-      "last_event_id": "01KQ1H99VDAKFNH26Z4VQQ3SZ5",
-      "last_transition_at": "2026-04-25T05:20:03.949942+00:00"
+      "lane": "in_review",
+      "last_event_id": "01KQ1HE0CYPJPMM533T2Z70D03",
+      "last_transition_at": "2026-04-25T05:22:38.110313+00:00"
     },
     "WP05": {
       "actor": "codex",
