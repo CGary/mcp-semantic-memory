@@ -1,81 +1,70 @@
-# HSME (Hybrid Semantic Memory Engine) v1.0.1
+# HSME (Hybrid Semantic Memory Engine) v1.0.1+
 
-HSME es un motor de memoria semántica híbrida de alto rendimiento diseñado para proporcionar una base de conocimiento persistente y con trazabilidad para agentes de IA. Combina la velocidad de la búsqueda léxica, la profundidad de la búsqueda semántica y la estructura de un Grafo de Conocimiento técnico.
+HSME es un motor de memoria semántica híbrida de alto rendimiento diseñado para proporcionar una base de conocimiento persistente, con trazabilidad y observabilidad profunda para agentes de IA. Combina la velocidad de la búsqueda léxica, la profundidad de la búsqueda semántica y la estructura de un Grafo de Conocimiento técnico.
 
 ## 🏗️ Arquitectura de Tres Procesos
 
 HSME separa runtime, procesamiento semántico y mantenimiento operativo para mantener baja latencia y permitir observabilidad escalable:
 
-1.  **MCP Server (`hsme`)**: Servidor ligero que maneja las peticiones del agente vía `stdio`. Realiza búsquedas híbridas instantáneas, encola nuevas memorias y puede capturar trazas de runtime.
+1.  **MCP Server (`hsme`)**: Servidor ligero que maneja las peticiones del agente vía `stdio`. Realiza búsquedas híbridas instantáneas y encola tareas de enriquecimiento.
 2.  **Async Worker (`hsme-worker`)**: Proceso en segundo plano que consume la cola de tareas para:
-    *   Generar embeddings de vectores (`nomic-embed-text`).
+    *   Generar embeddings de vectores (`nomic-embed-text`) con aceleración GPU (CUDA).
     *   Extraer entidades y relaciones técnicas (`phi3.5`).
-    *   Construir el Grafo de Conocimiento dinámicamente.
-    *   Emitir observabilidad sobre leasing y ejecución de tareas.
-3.  **Ops Runner (`hsme-ops`)**: Runner dedicado para mantenimiento operativo y observabilidad. Ejecuta rollups, retención y consultas resumidas sin mezclar esa carga con MCP ni con el worker semántico.
+    *   Construir el Grafo de Conocimiento dinámicamente con parsing tolerante.
+3.  **Ops Runner (`hsme-ops`)**: Runner dedicado para mantenimiento operativo. Ejecuta rollups de métricas, políticas de retención y limpieza de base de datos sin afectar el rendimiento de las consultas.
+
+## 🛡️ Mejoras de "Hardening" (v1.0.1)
+
+*   **Integridad Autoritativa**: Implementación de **triggers de SQLite** para la sincronización automática de FTS5. Se eliminó la sincronización manual en favor de una consistencia garantizada a nivel de base de datos.
+*   **Concurrencia Optimizada**: Uso de `_txlock=immediate` y limitación estratégica del pool de conexiones (MaxOpenConns=4) para maximizar el rendimiento en modo WAL, eliminando colisiones de escritura en ingestas masivas.
+*   **Aceleración GPU (CUDA)**: Soporte completo para `ollama-cuda`, logrando una aceleración de **10x** en tareas de extracción de grafos y generación de embeddings.
+
+## 📊 Observabilidad Industrial
+
+HSME v1.0.1 integra un sistema de telemetría interno completo persistido en SQLite:
+*   **Distributed Tracing**: Registro de trazas y spans para cada request MCP y tarea del worker.
+*   **Metric Rollups**: Agregación automática de métricas (p50, p95, throughput) por minuto, hora y día.
+*   **Retention Policies**: Limpieza automática de datos de telemetría según antigüedad y criticidad.
+*   **Operator Views**: Vistas SQL predefinidas para identificar operaciones lentas y errores recurrentes (`obs_recent_slow_operations`, `obs_error_events`).
 
 ## 🚀 Instalación y Setup
 
 ### Requisitos
 - Go 1.26+ con CGO habilitado.
-- [Just](https://github.com/casey/just) (recomendado) para la gestión de tareas.
-- Ollama instalado y accesible con los modelos: `nomic-embed-text` y `phi3.5`.
+- [Just](https://github.com/casey/just) para la gestión de tareas.
+- Ollama (preferiblemente `ollama-cuda`) con modelos: `nomic-embed-text` y `phi3.5`.
 
 ### Instalación Rápida
 ```bash
-# Compila e instala binarios en ~/go/bin y los copia a la raíz
+# Compila e instala binarios en ~/go/bin
 just install
 ```
 
 ## 📂 Operación y Mantenimiento
 
-El motor utiliza **SQLite** con los módulos **FTS5** y **sqlite-vec** integrados. La base de datos central reside en `data/engram.db`.
-
 ### Comandos de Just
-- `just serve`: Inicia el servidor MCP (Interactivo).
-- `just work-bg`: Lanza el procesador de grafos y embeddings en segundo plano (Log: `worker_new.log`).
-- `just ops`: Ejecuta un ciclo de mantenimiento de observabilidad (rollups + retención).
-- `just ops-loop`: Corre el runner de operaciones en modo continuo.
-- `just status`: Muestra una instantánea del progreso del procesamiento y salud del grafo.
-- `just watch-status`: Monitoreo en tiempo real del procesamiento de la cola.
-- `just backup`: Crea un backup atómico compatible con el modo WAL de SQLite.
-- `just restore`: Restaura el backup más reciente previa verificación de integridad.
+- `just serve`: Inicia el servidor MCP.
+- `just work-bg`: Lanza el worker semántico en segundo plano (GPU acelerado).
+- `just ops-loop`: Corre el runner de mantenimiento y rollups de métricas.
+- `just status`: Instantánea de salud del sistema, progreso de la cola y estado del grafo.
+- `just backup/restore`: Gestión de snapshots atómicos compatibles con WAL.
 
 ## 🔌 Configuración del Cliente MCP
-
-Para integrar HSME con **Gemini CLI**, **Claude Desktop** o cualquier cliente MCP, añade la configuración apuntando al binario absoluto:
 
 ```json
 {
   "mcpServers": {
     "hsme": {
-      "command": "/home/gary/dev/hsme/hsme",
+      "command": "/absolute/path/to/hsme",
       "env": {
-        "SQLITE_DB_PATH": "/home/gary/dev/hsme/data/engram.db",
-        "OLLAMA_HOST": "http://localhost:11434"
+        "SQLITE_DB_PATH": "/absolute/path/to/data/engram.db",
+        "OLLAMA_HOST": "http://localhost:11434",
+        "OBS_LEVEL": "basic" 
       }
     }
   }
 }
 ```
 
-## 🧠 Capacidades del Motor
-
-### 1. Búsqueda Híbrida (RRF)
-Implementa **Reciprocal Rank Fusion** para combinar resultados de:
-*   **FTS5**: Precisión léxica para términos técnicos exactos, comandos y nombres de archivos.
-*   **Vector Search**: Similitud semántica para conceptos y descripciones abstractas.
-
-### 2. Grafo de Conocimiento Técnico
-El worker extrae automáticamente:
-*   **Entidades**: `TECH` (tecnologías), `FILE` (rutas), `CMD` (comandos), `ERROR` (logs).
-*   **Relaciones**: `DEPENDS_ON`, `RESOLVES`, `CAUSES`.
-*   **Trazabilidad**: Cada nodo y relación está vinculado a la memoria original (evidencia).
-
-### 3. Concurrencia Robusta
-Optimizado para el uso local intenso:
-*   **Modo WAL**: Permite lecturas concurrentes mientras el worker escribe los embeddings.
-*   **Write Mutex**: Protege el canal `stdout` para evitar corrupciones de JSON-RPC durante la ejecución concurrente.
-
 ---
-**Desarrollo**: Este proyecto sigue los principios de **Spec-Driven Development (SDD)** con **Strict TDD Mode** habilitado. Consulta el `Technical_Specification.md` para detalles internos del esquema y el flujo de ingesta.
+**Desarrollo**: Este proyecto sigue los principios de **Spec-Driven Development (SDD)** con **Strict TDD Mode**. Consulta el `Technical_Specification.md` para detalles internos del esquema y el flujo de ingesta.
