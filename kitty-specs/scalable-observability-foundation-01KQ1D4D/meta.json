@@ -8,5 +8,7 @@
   "purpose_context": "This mission specifies how HSME should capture, persist, correlate, retain, and summarize observability data across both MCP requests and asynchronous worker execution so operators can diagnose latency, failures, and system health as the project grows.",
   "purpose_tldr": "Define a scalable observability foundation for MCP and worker flows with SQL telemetry, internal APIs, and retention/rollup strategy.",
   "slug": "scalable-observability-foundation-01KQ1D4D",
-  "target_branch": "main"
+  "target_branch": "main",
+  "vcs": "git",
+  "source_description": "Specify exact SQL schema, internal API, retention, and rollup strategy for scalable observability across MCP and worker flows."
 }
