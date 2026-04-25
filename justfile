@@ -53,47 +53,13 @@ ops:
 ops-loop:
 	./hsme-ops loop
 
-# Ver progreso actual (instantánea)
+# Ver progreso actual (Instantánea con diseño mejorado)
 status:
-	@WORKER_STATE=$(if pgrep -x hsme-worker >/dev/null; then echo "online"; else echo "offline"; fi); \
-	STATS=$(sqlite3 -separator '|' {{SQLITE_DB_PATH}} " \
-	WITH stats AS ( \
-		SELECT \
-			COUNT(*) AS total_tasks, \
-			SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed, \
-			SUM(CASE WHEN status = 'pending' AND attempt_count < 5 THEN 1 ELSE 0 END) AS pending_retryable, \
-			SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) AS processing, \
-			SUM(CASE WHEN status = 'failed' OR attempt_count >= 5 THEN 1 ELSE 0 END) AS blocked_failed \
-		FROM async_tasks \
-	) \
-	SELECT \
-		CASE WHEN total_tasks = 0 THEN 100.0 ELSE completed * 100.0 / total_tasks END, \
-		completed, \
-		pending_retryable, \
-		processing, \
-		blocked_failed, \
-		(SELECT COUNT(*) FROM kg_nodes), \
-		(SELECT COUNT(*) FROM kg_edge_evidence) \
-	FROM stats;"); \
-	PROGRESS=$(printf '%s' "$STATS" | cut -d'|' -f1); \
-	COMPLETED=$(printf '%s' "$STATS" | cut -d'|' -f2); \
-	PENDING=$(printf '%s' "$STATS" | cut -d'|' -f3); \
-	PROCESSING=$(printf '%s' "$STATS" | cut -d'|' -f4); \
-	BLOCKED=$(printf '%s' "$STATS" | cut -d'|' -f5); \
-	NODES=$(printf '%s' "$STATS" | cut -d'|' -f6); \
-	EDGES=$(printf '%s' "$STATS" | cut -d'|' -f7); \
-	printf 'Progreso: %.2f%% | Worker: %s | Completado: %s | Pendientes: %s | Processing: %s | Bloqueadas: %s | Nodos: %s | Relaciones: %s\n' "$PROGRESS" "$WORKER_STATE" "$COMPLETED" "$PENDING" "$PROCESSING" "$BLOCKED" "$NODES" "$EDGES"; \
-	sqlite3 {{SQLITE_DB_PATH}} " \
-	SELECT printf( \
-		'Detalle: retryables=%d | agotadas_max_attempts=%d | ultimo_pending=%s', \
-		(SELECT COUNT(*) FROM async_tasks WHERE status = 'pending' AND attempt_count < 5), \
-		(SELECT COUNT(*) FROM async_tasks WHERE status = 'failed' OR attempt_count >= 5), \
-		COALESCE((SELECT printf('#%d %s mem=%d intentos=%d', id, task_type, memory_id, attempt_count) FROM async_tasks WHERE status = 'pending' ORDER BY updated_at DESC LIMIT 1), 'ninguno') \
-	);"
+	@./scripts/status.sh
 
 # Monitorear progreso en tiempo real (refresco cada 2s)
 watch-status:
-	@watch -n 2 -c "sqlite3 {{SQLITE_DB_PATH}} \"SELECT printf('PROGRESO: %.2f%% | RESTANTE: %d | FALLANDO: %d\nNODOS: %d | RELACIONES: %d', (SELECT COUNT(*) FROM async_tasks WHERE status = 'completed') * 100.0 / (SELECT COUNT(*) FROM async_tasks), (SELECT COUNT(*) FROM async_tasks WHERE status = 'pending'), (SELECT COUNT(*) FROM async_tasks WHERE attempt_count >= 5), (SELECT COUNT(*) FROM kg_nodes), (SELECT COUNT(*) FROM kg_edge_evidence)) as status;\""
+	@watch -n 2 -c "./scripts/status.sh"
 
 # Reencolar tareas fallidas agotadas para que el worker pueda retomarlas
 retry-failed:
