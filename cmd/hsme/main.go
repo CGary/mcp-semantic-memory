@@ -134,7 +134,7 @@ func main() {
 		func(params json.RawMessage) (interface{}, error) { return handleStoreContext(db, params) },
 	)
 
-	// search_exact (spec §14.3): LIKE sobre chunk_text, sin ranking semántico.
+	// search_exact (spec §14.3): búsqueda léxica exacta sobre FTS5, sin ranking semántico.
 	srv.RegisterTool("search_exact", "Exact substring search over memory chunks",
 		map[string]interface{}{
 			"type": "object",

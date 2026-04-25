@@ -270,13 +270,19 @@ func VectorSearch(ctx context.Context, db *sql.DB, vector []float32, limit int) 
 }
 
 func ExactSearch(ctx context.Context, db *sql.DB, keyword string, limit int) ([]ExactMatchResult, error) {
+	safe := sanitizeFTS(keyword)
+	if safe == "" {
+		return nil, nil
+	}
+
 	rows, err := db.QueryContext(ctx, `
 		SELECT c.memory_id, c.id, c.chunk_index, c.chunk_text
-		FROM memory_chunks c
-		WHERE c.chunk_text LIKE ?
+		FROM memory_chunks_fts f
+		JOIN memory_chunks c ON c.id = f.rowid
+		WHERE f.chunk_text MATCH ?
 		ORDER BY c.memory_id, c.chunk_index
-		LIMIT ?
-	`, "%"+keyword+"%", limit)
+	LIMIT ?
+	`, safe, limit)
 	if err != nil {
 		return nil, err
 	}
