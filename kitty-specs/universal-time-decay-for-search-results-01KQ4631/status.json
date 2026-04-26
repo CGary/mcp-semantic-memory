@@ -1,7 +1,7 @@
 {
-  "event_count": 9,
-  "last_event_id": "01KQ47SFR4TDGPGQ4TJZ98EHGF",
-  "materialized_at": "2026-04-26T06:31:51.812267+00:00",
+  "event_count": 11,
+  "last_event_id": "01KQ47STJD3S2QD3W9K89M8Q1D",
+  "materialized_at": "2026-04-26T06:32:02.893089+00:00",
   "mission_number": "",
   "mission_slug": "universal-time-decay-for-search-results-01KQ4631",
   "mission_type": "software-dev",
@@ -12,9 +12,9 @@
     "claimed": 0,
     "done": 0,
     "for_review": 0,
-    "in_progress": 0,
+    "in_progress": 1,
     "in_review": 0,
-    "planned": 3
+    "planned": 2
   },
   "work_packages": {
     "WP01": {
@@ -25,11 +25,11 @@
       "last_transition_at": "2026-04-26T06:31:51.812267+00:00"
     },
     "WP02": {
-      "actor": "finalize-tasks",
+      "actor": "gemini:1.5-pro:architect:implementer",
       "force_count": 1,
-      "lane": "planned",
-      "last_event_id": "01KQ47AVVF8JB3AZS10K6N62MM",
-      "last_transition_at": "2026-04-26T06:23:52.687693+00:00"
+      "lane": "in_progress",
+      "last_event_id": "01KQ47STJD3S2QD3W9K89M8Q1D",
+      "last_transition_at": "2026-04-26T06:32:02.893089+00:00"
     },
     "WP03": {
       "actor": "finalize-tasks",

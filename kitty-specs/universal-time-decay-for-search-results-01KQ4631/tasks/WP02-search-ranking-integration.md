@@ -24,8 +24,8 @@ subtasks:
 - T005
 - T006
 - T007
-agent: "codex"
-shell_pid: ""
+agent: "gemini:1.5-pro:architect:implementer"
+shell_pid: "1834184"
 history: []
 agent_profile: implementer-ivan
 authoritative_surface: src/core/search/
@@ -101,3 +101,7 @@ Preserve the current decay-off behavior by construction. Prefer an explicit top-
 - Decay-off output is provably identical to the frozen baseline.
 - Exact-search collisions can be broken by recency when decay is on.
 - No unrelated search surfaces are modified.
+
+## Activity Log
+
+- 2026-04-26T06:32:02Z – gemini:1.5-pro:architect:implementer – shell_pid=1834184 – Started implementation via action command
