@@ -15,13 +15,13 @@ history:
   action: tasks generated
   actor: tasks skill
 agent_profile: ''
-authoritative_surface: ''
+authoritative_surface: kitty-specs/hsme-unified-cli-01KQ59MV/
 execution_mode: planning_artifact
 model: ''
 owned_files:
-- kitty-specs/hsme-unified-cli-01KQ59MV/**
-- src/bootstrap/**
-- src/core/admin/**
+- kitty-specs/hsme-unified-cli-01KQ59MV/meta.json
+- kitty-specs/hsme-unified-cli-01KQ59MV/status.json
+- kitty-specs/hsme-unified-cli-01KQ59MV/status.events.jsonl
 role: ''
 tags: []
 ---

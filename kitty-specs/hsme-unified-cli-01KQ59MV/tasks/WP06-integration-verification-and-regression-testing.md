@@ -20,14 +20,12 @@ history:
   action: tasks generated
   actor: tasks skill
 agent_profile: ''
-authoritative_surface: ''
+authoritative_surface: tests/modules/
 execution_mode: code_change
 model: ''
 owned_files:
-- kitty-specs/hsme-unified-cli-01KQ59MV/**
-- src/bootstrap/...
-- src/core/admin/...
 - tests/modules/...
+- log/...
 role: ''
 tags: []
 ---
