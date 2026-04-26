@@ -59,8 +59,13 @@ work:
 
 # Lanzar el worker en segundo plano
 work-bg:
-        @nohup ./hsme-worker > worker_new.log 2>&1 &
-        @echo "🚀 Worker lanzado en segundo plano (tail -f worker_new.log)"
+        @mkdir -p logs
+        @nohup ./hsme-worker > logs/worker.log 2>&1 &
+        @echo "🚀 Worker lanzado en segundo plano (tail -f logs/worker.log)"
+
+# Detener el worker en segundo plano
+stop-work:
+        @pkill -f "[h]sme-worker" && echo "🛑 Worker detenido." || echo "⚠️ El worker no estaba corriendo."
 
 # Ejecutar el runner de observabilidad/ops
 ops:
@@ -69,6 +74,22 @@ ops:
 # Lanzar ops en modo loop
 ops-loop:
         ./hsme-ops loop
+
+# Lanzar ops en modo loop en segundo plano
+ops-bg:
+        @mkdir -p logs
+        @nohup ./hsme-ops loop > logs/ops.log 2>&1 &
+        @echo "📊 Ops runner lanzado en segundo plano (tail -f logs/ops.log)"
+
+# Detener el ops runner en segundo plano
+stop-ops:
+        @pkill -f "[h]sme-ops" && echo "🛑 Ops runner detenido." || echo "⚠️ El ops runner no estaba corriendo."
+
+# Detener todos los procesos en segundo plano
+stop-all: stop-work stop-ops
+
+# Iniciar todos los procesos en segundo plano
+start-all: work-bg ops-bg
 
 # Ver progreso actual (Instantánea con diseño mejorado)
 status:
@@ -92,4 +113,4 @@ restore:
 
 # Limpiar binarios locales
 clean:
-        rm -f hsme hsme-worker hsme-ops hsme-cli worker_new.log
+        rm -f hsme hsme-worker hsme-ops hsme-cli logs/worker.log logs/ops.log
