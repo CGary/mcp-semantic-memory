@@ -30,10 +30,10 @@
 | T017 | Create `cmd/cli/admin.go` — `hsme-cli admin retry-failed`, `backup`, `restore` dispatch | WP02 |  | [D] |
 | T018 | Write `cmd/cli/*_test.go` — table-driven unit tests for flag parsing, dispatch, format selection, error messages | WP03 |  | [D] |
 | T019 | Write `tests/modules/cli_test.go` — end-to-end CLI integration tests against ephemeral DB | WP03 |  | [D] |
-| T020 | Create `src/core/admin/retry.go` — re-queue failed/exhausted tasks | WP04 |  |
-| T021 | Create `src/core/admin/backup.go` — SQLite Online Backup API wrapper | WP04 |  |
-| T022 | Create `src/core/admin/restore.go` — atomic restore with integrity check + WAL/SHM cleanup | WP04 |  |
-| T023 | Write `src/core/admin/admin_test.go` — integration tests for backup/restore round-trip, integrity failure, missing backup | WP04 |  |
+| T020 | Create `src/core/admin/retry.go` — re-queue failed/exhausted tasks | WP04 |  | [D] |
+| T021 | Create `src/core/admin/backup.go` — SQLite Online Backup API wrapper | WP04 |  | [D] |
+| T022 | Create `src/core/admin/restore.go` — atomic restore with integrity check + WAL/SHM cleanup | WP04 |  | [D] |
+| T023 | Write `src/core/admin/admin_test.go` — integration tests for backup/restore round-trip, integrity failure, missing backup | WP04 |  | [D] |
 | T024 | Refactor `justfile` status/backup/restore/retry-failed to one-line wrappers or remove | WP05 |  |
 | T025 | Remove `scripts/status.sh` after parity verification | WP05 |  |
 | T026 | Remove `ideas/cli-tool.md` after spec/plan supersede | WP05 |  |
@@ -181,10 +181,10 @@ T009, T010, T011 are independently implementable (different files, no shared sta
 
 ### Included subtasks
 
-- [ ] T020 Create `src/core/admin/retry.go` — re-queue failed/exhausted tasks
-- [ ] T021 Create `src/core/admin/backup.go` — SQLite Online Backup API wrapper
-- [ ] T022 Create `src/core/admin/restore.go` — atomic restore with integrity check + WAL/SHM cleanup
-- [ ] T023 Write `src/core/admin/admin_test.go` — integration tests for backup/restore round-trip, integrity failure, missing backup
+- [x] T020 Create `src/core/admin/retry.go` — re-queue failed/exhausted tasks
+- [x] T021 Create `src/core/admin/backup.go` — SQLite Online Backup API wrapper
+- [x] T022 Create `src/core/admin/restore.go` — atomic restore with integrity check + WAL/SHM cleanup
+- [x] T023 Write `src/core/admin/admin_test.go` — integration tests for backup/restore round-trip, integrity failure, missing backup
 
 ### Implementation sketch
 
