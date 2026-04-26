@@ -3,7 +3,7 @@
 **Mission**: `recency-fast-path-for-session-recall-01KQ405N`
 **Date**: 2026-04-26
 
-All decisions were locked during spec discovery. No `[NEEDS CLARIFICATION]` markers were generated. This document records the rationale for each choice for future traceability.
+All decisions were locked during spec discovery. No unresolved clarification markers were generated. This document records the rationale for each choice for future traceability.
 
 ---
 
