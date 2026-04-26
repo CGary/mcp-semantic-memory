@@ -168,3 +168,4 @@ Verify that:
 ## Activity Log
 
 - 2026-04-26T03:23:26Z – gemini:1.5-pro:architect:implementer – shell_pid=1579799 – Started implementation via action command
+- 2026-04-26T03:26:03Z – gemini:1.5-pro:architect:implementer – shell_pid=1579799 – Metadata restoration and cleanup phases implemented: exact-content matcher, backfill transaction, retagging of HSME summaries, and garbage cleanup.
