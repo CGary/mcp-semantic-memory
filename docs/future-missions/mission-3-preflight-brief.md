@@ -1,9 +1,9 @@
 # Brief: Pre-flight Work Before `/spec-kitty.specify` for Mission 3
 
-**Status**: Awaiting execution by an agent.
+**Status**: Complete — historical pre-flight brief only.
 **Created**: 2026-04-26
 **Audience**: Whatever agent picks this up — assume zero context from prior conversations.
-**Authoritative reference**: `docs/future-missions/mission-3-rrf-time-decay.md`.
+**Authoritative mission**: `kitty-specs/universal-time-decay-for-search-results-01KQ4631/`. Original draft: `docs/future-missions/mission-3-rrf-time-decay.md`.
 
 ---
 
@@ -14,27 +14,27 @@ Mission 3 — RRF Time-Decay in Hybrid Search — has a draft in `docs/future-mi
 1. ✅ Mission 1 (`engram-legacy-cutover-and-corpus-restoration-01KQ2SJK`) is merged AND executed against production. Real `created_at` values exist for the entire corpus (rango 2026-04-04 → ~2026-04-26).
 2. ✅ Mission 2 (`recency-fast-path-for-session-recall-01KQ405N`) is merged. The `recall_recent_session` MCP tool exists and works.
 
-The last two pre-flight items are NOT done yet:
+The last two pre-flight items are now also complete:
 
-3. ❌ Record fresh baseline measurements from the current corpus.
-4. ❌ Freeze an evaluation query set before tuning half-life values.
+3. ✅ Fresh baseline measurements were recorded from the then-current corpus.
+4. ✅ The evaluation query set was frozen before tuning half-life values.
 
 **Why these matter**: Mission 3's likely NFRs include thresholds like "≥80% of pure-recency queries surface the expected newest result in the top 3" and "very-old high-relevance memories do NOT disappear from the top 5 with decay enabled". Those numbers are meaningless without:
 - A frozen set of representative queries to evaluate against (so we don't tune the half-life by cherry-picking).
 - A "before" measurement against today's `search_fuzzy` so the "after" has something to beat.
 
-If we run `/spec-kitty.specify` for Mission 3 without this, the spec ships with invented thresholds. The whole point of deferring Mission 3 was to avoid exactly that.
+This brief succeeded in preventing invented thresholds: the promoted Mission 3 used the frozen eval set and baseline. The later corrected benchmark showed the structural implementation exists but does not satisfy acceptance thresholds, so the remaining work is a follow-up ranking-quality mission.
 
 ---
 
-## Goal of this brief
+## Goal of this brief — completed
 
 Produce two artifacts that the next operator will reference inside Mission 3's `/spec-kitty.specify` discovery interview and inside Mission 3's `research.md`:
 
 1. A frozen evaluation query set: `docs/future-missions/mission-3-eval-set.yaml`.
 2. A baseline measurement report: `docs/future-missions/mission-3-baseline.json` plus a human-readable companion `docs/future-missions/mission-3-baseline.md`.
 
-Both files MUST be committed to `main` (the repo follows trunk-based development for documentation). No code changes. No schema changes. No MCP server restart needed.
+Both files were committed to `main`. This brief should no longer be executed; it remains as historical context for how the Mission 3 frozen artifacts were produced.
 
 ---
 

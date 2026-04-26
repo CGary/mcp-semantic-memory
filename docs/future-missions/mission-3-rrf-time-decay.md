@@ -1,43 +1,82 @@
-# Future Mission 3 — RRF Time-Decay in Hybrid Search
+# Historical Mission 3 Draft — RRF Time-Decay in Hybrid Search
 
-**Status**: Still future / not yet created in spec-kitty as of 2026-04-26.
-**Depends on**:
-- Mission 1 already exists historically: `kitty-specs/engram-legacy-cutover-and-corpus-restoration-01KQ2SJK/`
-- Mission 2 now also exists: `kitty-specs/recency-fast-path-for-session-recall-01KQ405N/`
+> **Historical note only — NOT authoritative anymore.**
+>
+> As of **2026-04-26**, this draft was promoted to a real Spec Kitty mission:
+>
+> - `kitty-specs/universal-time-decay-for-search-results-01KQ4631/`
+>
+> Use that mission directory as the source of truth for specs, plans, tasks, and implementation history.
 
-**Important**: This file is still only a draft note. If/when Mission 3 is promoted, the authoritative artifacts must live under `kitty-specs/`.
+## Current status
 
-## Purpose
+**Promoted and merged, but not acceptance-complete.**
 
-Bring chronology into the ranking of semantic + lexical hybrid search. Today, two memories with similar relevance scores can still rank in a way that ignores freshness. This mission would make recency a soft scoring factor, not an exact retrieval path.
+The implementation was merged in:
 
-## Source idea
+- `00b8b3a feat(kitty/mission-universal-time-decay-for-search-results-01KQ4631): squash merge of mission`
 
-`ideas/session-history-recency.md` — Solution 2 (RRF Time-Decay).
+The benchmark harness was later corrected in:
 
-## Scope
+- `9183f20 Fix time-decay benchmark validation`
 
-### In scope
+The corrected benchmark now runs against the frozen 20-query eval set and the frozen baseline:
 
-1. **Decay function**: multiplicative exponential half-life applied to the RRF score.
-2. **Configurable half-life**: environment variable `RRF_HALF_LIFE_DAYS`.
-3. **Feature flag**: `RRF_TIME_DECAY=on|off`, default `off` initially.
-4. **A/B harness**: reproducible benchmark against a fixed query set.
-5. **Documentation**: explain the knob, tradeoffs, and how to tune it.
+- `docs/future-missions/mission-3-eval-set.yaml`
+- `docs/future-missions/mission-3-baseline.json`
 
-### Out of scope
+Latest verified result with `RRF_HALF_LIFE_DAYS=14`:
 
-- Replacing RRF entirely
-- Cross-encoder reranking / MMR / other ranking strategies
-- Changes to Mission 2's exact-recency tool
+| Criterion | Required | Result | Status |
+|---|---:|---:|---|
+| Decay OFF baseline equivalence | 100% | 20/20 matched | PASS |
+| `pure_recency` top-3 | 60% | 20% | FAIL |
+| `adversarial` top-3 | 80% | 0% | FAIL |
+| `pure_relevance` top-10 | 60% | 80% | PASS |
+| `mixed` top-3 | 60% | 60% | PASS |
 
-## Pre-flight checks before promoting this mission
+Half-life probes (`1, 3, 7, 14, 30, 60, 120`) did not find a value that satisfies both pure-recency improvement and adversarial preservation simultaneously. This indicates the remaining work is not just tuning; the ranking approach needs a follow-up design.
 
-1. Confirm Mission 1 artifacts remain the authoritative restored-timestamp baseline.
-2. Confirm Mission 2 exists and is the authoritative exact-recency fast path.
-3. Record fresh baseline measurements from the current corpus.
-4. Freeze an evaluation query set before tuning half-life values.
+## Original purpose
 
-## Anti-confusion note
+Bring chronology into the ranking of semantic + lexical hybrid search. Before this work, two memories with similar relevance scores could rank in a way that ignored freshness. The intended approach was a soft scoring factor, not an exact-recency retrieval path.
 
-Mission 3 is the **only** mission in this folder that still remains genuinely future as of 2026-04-26.
+## What was implemented
+
+The promoted mission implemented the structural pieces from this draft:
+
+1. `RRF_TIME_DECAY=on|off` feature flag, default off.
+2. `RRF_HALF_LIFE_DAYS` config.
+3. Shared decay function.
+4. Time-decay integration in `search_fuzzy` and `search_exact`.
+5. Benchmark harness under `cmd/bench-decay`.
+6. Documentation and benchmark reporting.
+
+The post-review correction (`9183f20`) made the harness load the frozen eval set/baseline, run all 20 queries, include exact samples, and report PASS/FAIL thresholds.
+
+## Remaining gap
+
+The implementation is measurable but does not satisfy the product thresholds. A follow-up mission should focus on **ranking quality**, not on adding more harness infrastructure.
+
+Likely directions:
+
+- Replace the simple multiplicative decay with a more stable blend of relevance and recency.
+- Add query-intent aware weighting (pure-recency vs adversarial/pure-relevance) while preserving the single operator knob if possible.
+- Consider post-retrieval reranking using candidate metadata (`source_type`, lexical match strength, age, baseline relevance score) without changing storage schema.
+- Keep `recall_recent_session` separate; it remains the exact-recency tool from Mission 2.
+
+## Pre-flight checks from the original draft
+
+All original pre-flight items are now complete:
+
+1. ✅ Mission 1 restored real timestamps.
+2. ✅ Mission 2 introduced `recall_recent_session`.
+3. ✅ Fresh baseline was recorded.
+4. ✅ Evaluation set was frozen before tuning.
+
+## Do not use this file for implementation
+
+This file remains only to preserve original intent. For any new work, create a new Spec Kitty mission that depends on:
+
+- `kitty-specs/universal-time-decay-for-search-results-01KQ4631/`
+- frozen inputs in `docs/future-missions/mission-3-eval-set.yaml` and `mission-3-baseline.json`
