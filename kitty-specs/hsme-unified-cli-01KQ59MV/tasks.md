@@ -34,9 +34,9 @@
 | T021 | Create `src/core/admin/backup.go` — SQLite Online Backup API wrapper | WP04 |  | [D] |
 | T022 | Create `src/core/admin/restore.go` — atomic restore with integrity check + WAL/SHM cleanup | WP04 |  | [D] |
 | T023 | Write `src/core/admin/admin_test.go` — integration tests for backup/restore round-trip, integrity failure, missing backup | WP04 |  | [D] |
-| T024 | Refactor `justfile` status/backup/restore/retry-failed to one-line wrappers or remove | WP05 |  |
-| T025 | Remove `scripts/status.sh` after parity verification | WP05 |  |
-| T026 | Remove `ideas/cli-tool.md` after spec/plan supersede | WP05 |  |
+| T024 | Refactor `justfile` status/backup/restore/retry-failed to one-line wrappers or remove | WP05 |  | [D] |
+| T025 | Remove `scripts/status.sh` after parity verification | WP05 |  | [D] |
+| T026 | Remove `ideas/cli-tool.md` after spec/plan supersede | WP05 |  | [D] |
 | T027 | Run full test suite (`just test`) and verify zero regressions | WP06 |  |
 | T028 | Verify restore refuses corrupt backup (100% of cases) | WP06 |  |
 | T029 | Verify operator daily ops loop works end-to-end without bash | WP06 |  |
@@ -219,9 +219,9 @@ T009, T010, T011 are independently implementable (different files, no shared sta
 
 ### Included subtasks
 
-- [ ] T024 Refactor `justfile` status/backup/restore/retry-failed to one-line wrappers
-- [ ] T025 Remove `scripts/status.sh` after parity verification
-- [ ] T026 Remove `ideas/cli-tool.md` after spec/plan supersede
+- [x] T024 Refactor `justfile` status/backup/restore/retry-failed to one-line wrappers
+- [x] T025 Remove `scripts/status.sh` after parity verification
+- [x] T026 Remove `ideas/cli-tool.md` after spec/plan supersede
 
 ### Implementation sketch
 
