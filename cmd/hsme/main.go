@@ -94,9 +94,16 @@ func main() {
 	// rechazamos el startup con un mensaje claro en vez de dejar que el worker
 	// falle chunk por chunk más tarde.
 	if err := sqlite.ValidateEmbeddingConfig(db, embedder); err != nil {
-		fmt.Fprintf(os.Stderr, "Config de embedding inválida: %v\n", err)
-		os.Exit(1)
+	        fmt.Fprintf(os.Stderr, "Config de embedding inválida: %v\n", err)
+	        os.Exit(1)
 	}
+
+	decayCfg, err := search.LoadDecayConfig()
+	if err != nil {
+	        fmt.Fprintf(os.Stderr, "Config de decay inválida: %v\n", err)
+	        os.Exit(1)
+	}
+	search.GlobalDecayConfig = decayCfg
 
 	srv := mcp.NewServer()
 	obsCfg := observability.LoadConfigFromEnv()

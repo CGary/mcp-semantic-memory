@@ -12,15 +12,8 @@ import (
 	vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
 )
 
-// embedTimeout acota el tiempo que una búsqueda MCP puede esperar a Ollama.
-// El HTTPClient del cliente Ollama tiene timeout de 2 minutos (pensado para
-// ingestión batch), pero en un search síncrono el cliente MCP corta mucho antes
-// y pierde la sesión. Si se excede, caemos a búsqueda léxica pura.
 const embedTimeout = 10 * time.Second
 
-// sanitizeFTS convierte una consulta en lenguaje natural a una expresión FTS5 segura.
-// Tokeniza por espacios y envuelve cada término entre comillas dobles (escapando comillas internas),
-// neutralizando operadores FTS5 como `:`, `-`, `*`, paréntesis y comillas sueltas.
 func sanitizeFTS(q string) string {
 	fields := strings.Fields(q)
 	if len(fields) == 0 {
@@ -49,15 +42,16 @@ type MemorySearchResult struct {
 	MemoryID       int64            `json:"memory_id"`
 	Score          float64          `json:"score"`
 	IsSuperseded   bool             `json:"is_superseded"`
-	VectorCoverage string           `json:"vector_coverage"` // "complete|partial|none"
+	VectorCoverage string           `json:"vector_coverage"`
 	Highlights     []ChunkHighlight `json:"highlights"`
 }
 
 type ExactMatchResult struct {
-	MemoryID   int64  `json:"memory_id"`
-	ChunkID    int64  `json:"chunk_id"`
-	ChunkIndex int    `json:"chunk_index"`
-	Text       string `json:"text"`
+	MemoryID   int64   `json:"memory_id"`
+	ChunkID    int64   `json:"chunk_id"`
+	ChunkIndex int     `json:"chunk_index"`
+	Text       string  `json:"text"`
+	Score      float64 `json:"-"`
 }
 
 type SearchResult struct {
@@ -66,61 +60,58 @@ type SearchResult struct {
 }
 
 func FuzzySearch(ctx context.Context, db *sql.DB, embedder Embedder, query string, limit int, project string) ([]MemorySearchResult, error) {
-        // 1. Lexical Search (FTS5)
-        lexicalResults, err := LexicalSearch(ctx, db, query, limit*2, project)
-        if err != nil {
-                return nil, err
-        }
+	lexicalResults, err := LexicalSearch(ctx, db, query, limit*2, project)
+	if err != nil {
+		return nil, err
+	}
 
-        // 2. Vector Search (sqlite-vec) — embedding con timeout acotado.
-        var vectorResults []SearchResult
-        if embedder != nil {
-                embedCtx, cancel := context.WithTimeout(ctx, embedTimeout)
-                vector, err := embedder.GenerateVector(embedCtx, query)
-                cancel()
-                if err == nil {
-                        vectorResults, err = VectorSearch(ctx, db, vector, limit*2, project)
-                        if err != nil {
-                                fmt.Fprintf(os.Stderr, "Error en búsqueda vectorial: %v\n", err)
-                                vectorResults = nil
-                        }
-                } else {
-                        fmt.Fprintf(os.Stderr, "Error generando vector para búsqueda (timeout=%s, degradando a léxica): %v\n", embedTimeout, err)
-                }
-        }
-	// 3. Fusion using RRF at chunk level
+	var vectorResults []SearchResult
+	if embedder != nil {
+		embedCtx, cancel := context.WithTimeout(ctx, embedTimeout)
+		vector, err := embedder.GenerateVector(embedCtx, query)
+		cancel()
+		if err == nil {
+			vectorResults, err = VectorSearch(ctx, db, vector, limit*2, project)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error en búsqueda vectorial: %v\n", err)
+				vectorResults = nil
+			}
+		} else {
+			fmt.Fprintf(os.Stderr, "Error generando vector para búsqueda: %v\n", err)
+		}
+	}
+
 	fusedChunks := RRF(limit*2, lexicalResults, vectorResults)
 	if len(fusedChunks) == 0 {
 		return nil, nil
 	}
 
-	// 4. Batch-fetch todos los chunks fusionados de una (JOIN contra memories
-	// para traer el status en el mismo roundtrip). Antes esto era un SELECT por
-	// chunk → ~20 queries para limit=10. Ahora es UNA.
 	chunkIDs := make([]any, len(fusedChunks))
 	for i, c := range fusedChunks {
 		chunkIDs[i] = c.ID
 	}
 	placeholders := strings.Repeat(",?", len(fusedChunks))[1:]
 	chunkRows, err := db.QueryContext(ctx, fmt.Sprintf(`
-		SELECT c.id, c.memory_id, c.chunk_index, c.chunk_text, m.status
+		SELECT c.id, c.memory_id, c.chunk_index, c.chunk_text, m.status, m.created_at
 		  FROM memory_chunks c
 		  JOIN memories m ON m.id = c.memory_id
 		 WHERE c.id IN (%s)`, placeholders), chunkIDs...)
 	if err != nil {
 		return nil, fmt.Errorf("batch chunk lookup: %w", err)
 	}
+
 	type chunkMeta struct {
 		memoryID     int64
 		chunkIndex   int
 		chunkText    string
 		memoryStatus string
+		createdAt    time.Time
 	}
 	chunkByID := make(map[int64]chunkMeta, len(fusedChunks))
 	for chunkRows.Next() {
 		var id int64
 		var cm chunkMeta
-		if err := chunkRows.Scan(&id, &cm.memoryID, &cm.chunkIndex, &cm.chunkText, &cm.memoryStatus); err != nil {
+		if err := chunkRows.Scan(&id, &cm.memoryID, &cm.chunkIndex, &cm.chunkText, &cm.memoryStatus, &cm.createdAt); err != nil {
 			chunkRows.Close()
 			return nil, err
 		}
@@ -128,19 +119,27 @@ func FuzzySearch(ctx context.Context, db *sql.DB, embedder Embedder, query strin
 	}
 	chunkRows.Close()
 
-	// Iteramos fusedChunks en orden RRF para que los highlights salgan en orden
-	// de relevancia (el map del batch query no tiene orden garantizado).
 	memoryScores := make(map[int64]float64)
 	memoryHighlights := make(map[int64][]ChunkHighlight)
 	memoryStatus := make(map[int64]string)
+	
+	now := time.Now()
+
 	for _, chunk := range fusedChunks {
 		cm, ok := chunkByID[chunk.ID]
 		if !ok {
 			continue
 		}
 		memoryStatus[cm.memoryID] = cm.memoryStatus
-		if chunk.Score > memoryScores[cm.memoryID] {
-			memoryScores[cm.memoryID] = chunk.Score
+		
+		score := chunk.Score
+		if GlobalDecayConfig.Enabled {
+			age := AgeInDays(now, cm.createdAt)
+			score = score * DecayFactor(age, GlobalDecayConfig.HalfLifeDays)
+		}
+
+		if score > memoryScores[cm.memoryID] {
+			memoryScores[cm.memoryID] = score
 		}
 		if len(memoryHighlights[cm.memoryID]) < 3 {
 			memoryHighlights[cm.memoryID] = append(memoryHighlights[cm.memoryID], ChunkHighlight{
@@ -151,7 +150,6 @@ func FuzzySearch(ctx context.Context, db *sql.DB, embedder Embedder, query strin
 		}
 	}
 
-	// 5. Coverage vectorial — UNA query GROUP BY en vez de 2 queries por memoria.
 	coverageByMemory := make(map[int64]string, len(memoryScores))
 	if len(memoryScores) > 0 {
 		memIDs := make([]any, 0, len(memoryScores))
@@ -188,13 +186,12 @@ func FuzzySearch(ctx context.Context, db *sql.DB, embedder Embedder, query strin
 		covRows.Close()
 	}
 
-	// 6. Build final results
 	var results []MemorySearchResult
 	for memoryID, score := range memoryScores {
 		isSuperseded := memoryStatus[memoryID] == "superseded"
 		finalScore := score
 		if isSuperseded {
-			finalScore *= 0.5 // Default penalty §12.4
+			finalScore *= 0.5
 		}
 		coverage, ok := coverageByMemory[memoryID]
 		if !ok {
@@ -209,7 +206,6 @@ func FuzzySearch(ctx context.Context, db *sql.DB, embedder Embedder, query strin
 		})
 	}
 
-	// 6. Sort by final score
 	sort.Slice(results, func(i, j int) bool {
 		return results[i].Score > results[j].Score
 	})
@@ -222,63 +218,61 @@ func FuzzySearch(ctx context.Context, db *sql.DB, embedder Embedder, query strin
 }
 
 func LexicalSearch(ctx context.Context, db *sql.DB, query string, limit int, project string) ([]SearchResult, error) {
-        safe := sanitizeFTS(query)
-        if safe == "" {
-                return nil, nil
-        }
+	safe := sanitizeFTS(query)
+	if safe == "" {
+		return nil, nil
+	}
 
-        var rows *sql.Rows
-        var err error
-        if project != "" {
-                rows, err = db.QueryContext(ctx, `
-                        SELECT f.rowid, f.rank 
-                        FROM memory_chunks_fts f
-                        JOIN memory_chunks c ON c.id = f.rowid
-                        JOIN memories m ON m.id = c.memory_id
-                        WHERE f.chunk_text MATCH ? AND m.project = ?
-                        ORDER BY f.rank LIMIT ?`, safe, project, limit)
-        } else {
-                rows, err = db.QueryContext(ctx, "SELECT rowid, rank FROM memory_chunks_fts WHERE chunk_text MATCH ? ORDER BY rank LIMIT ?", safe, limit)
-        }
-        if err != nil {
-                return nil, err
-        }
-        defer rows.Close()
+	var rows *sql.Rows
+	var err error
+	if project != "" {
+		rows, err = db.QueryContext(ctx, `
+			SELECT f.rowid, f.rank 
+			FROM memory_chunks_fts f
+			JOIN memory_chunks c ON c.id = f.rowid
+			JOIN memories m ON m.id = c.memory_id
+			WHERE f.chunk_text MATCH ? AND m.project = ?
+			ORDER BY f.rank LIMIT ?`, safe, project, limit)
+	} else {
+		rows, err = db.QueryContext(ctx, "SELECT rowid, rank FROM memory_chunks_fts WHERE chunk_text MATCH ? ORDER BY rank LIMIT ?", safe, limit)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 	var results []SearchResult
 	for rows.Next() {
 		var res SearchResult
 		if err := rows.Scan(&res.ID, &res.Score); err != nil {
 			return nil, err
 		}
-		// FTS5 rank: lower is better. RRF expects position-based ranking.
-		// We just return them sorted, RRF uses the index.
 		results = append(results, res)
 	}
 	return results, nil
 }
 
 func VectorSearch(ctx context.Context, db *sql.DB, vector []float32, limit int, project string) ([]SearchResult, error) {
-        blob, err := vec.SerializeFloat32(vector)
-        if err != nil {
-                return nil, err
-        }
+	blob, err := vec.SerializeFloat32(vector)
+	if err != nil {
+		return nil, err
+	}
 
-        var rows *sql.Rows
-        if project != "" {
-                rows, err = db.QueryContext(ctx, `
-                        SELECT v.rowid 
-                        FROM memory_chunks_vec v
-                        JOIN memory_chunks c ON c.id = v.rowid
-                        JOIN memories m ON m.id = c.memory_id
-                        WHERE v.embedding MATCH ? AND m.project = ?
-                        LIMIT ?`, blob, project, limit)
-        } else {
-                rows, err = db.QueryContext(ctx, "SELECT rowid FROM memory_chunks_vec WHERE embedding MATCH ? LIMIT ?", blob, limit)
-        }
-        if err != nil {
-                return nil, err
-        }
-        defer rows.Close()
+	var rows *sql.Rows
+	if project != "" {
+		rows, err = db.QueryContext(ctx, `
+			SELECT v.rowid 
+			FROM memory_chunks_vec v
+			JOIN memory_chunks c ON c.id = v.rowid
+			JOIN memories m ON m.id = c.memory_id
+			WHERE v.embedding MATCH ? AND m.project = ?
+			LIMIT ?`, blob, project, limit)
+	} else {
+		rows, err = db.QueryContext(ctx, "SELECT rowid FROM memory_chunks_vec WHERE embedding MATCH ? LIMIT ?", blob, limit)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 	var results []SearchResult
 	for rows.Next() {
 		var res SearchResult
@@ -291,112 +285,165 @@ func VectorSearch(ctx context.Context, db *sql.DB, vector []float32, limit int, 
 }
 
 func ExactSearch(ctx context.Context, db *sql.DB, keyword string, limit int, project string) ([]ExactMatchResult, error) {
-        keyword = strings.TrimSpace(keyword)
-        if keyword == "" {
-                return nil, nil
-        }
+	keyword = strings.TrimSpace(keyword)
+	if keyword == "" {
+		return nil, nil
+	}
 
-        seen := make(map[int64]struct{}, limit)
-        results, err := exactSearchFTS(ctx, db, keyword, limit, seen, project)
-        if err != nil {
-                return nil, err
-        }
-        if len(results) >= limit {
-                return results, nil
-        }
+	seen := make(map[int64]struct{})
+	results, err := exactSearchFTS(ctx, db, keyword, limit, seen, project)
+	if err != nil {
+		return nil, err
+	}
 
-        fallback, err := exactSearchSubstring(ctx, db, keyword, limit-len(results), seen, project)
-        if err != nil {
-                return nil, err
-        }
-        results = append(results, fallback...)
-        return results, nil
+	fallbackLimit := limit
+	if GlobalDecayConfig.Enabled {
+		fallbackLimit = limit * 5
+	} else if len(results) >= limit {
+		return results, nil
+	} else {
+		fallbackLimit = limit - len(results)
+	}
+
+	fallback, err := exactSearchSubstring(ctx, db, keyword, fallbackLimit, seen, project)
+	if err != nil {
+		return nil, err
+	}
+	
+	combined := append(results, fallback...)
+	
+	if GlobalDecayConfig.Enabled {
+		sort.Slice(combined, func(i, j int) bool {
+			return combined[i].Score < combined[j].Score // Ascending: lower score is better (BM25 is negative)
+		})
+	}
+	
+	if len(combined) > limit {
+		combined = combined[:limit]
+	}
+
+	return combined, nil
 }
-func exactSearchFTS(ctx context.Context, db *sql.DB, keyword string, limit int, seen map[int64]struct{}, project string) ([]ExactMatchResult, error) {
-        safe := sanitizeFTS(keyword)
-        if safe == "" || limit <= 0 {
-                return nil, nil
-        }
 
-        var rows *sql.Rows
-        var err error
-        if project != "" {
-                rows, err = db.QueryContext(ctx, `
-                        SELECT c.memory_id, c.id, c.chunk_index, c.chunk_text
-                        FROM memory_chunks_fts f
-                        JOIN memory_chunks c ON c.id = f.rowid
-                        JOIN memories m ON m.id = c.memory_id
-                        WHERE f.chunk_text MATCH ? AND m.project = ?
-                        ORDER BY c.memory_id, c.chunk_index
-                        LIMIT ?
-                `, safe, project, limit)
-        } else {
-                rows, err = db.QueryContext(ctx, `
-                        SELECT c.memory_id, c.id, c.chunk_index, c.chunk_text
-                        FROM memory_chunks_fts f
-                        JOIN memory_chunks c ON c.id = f.rowid
-                        WHERE f.chunk_text MATCH ?
-                        ORDER BY c.memory_id, c.chunk_index
-                        LIMIT ?
-                `, safe, limit)
-        }
-        if err != nil {
-                return nil, err
-        }
-        defer rows.Close()
+func exactSearchFTS(ctx context.Context, db *sql.DB, keyword string, limit int, seen map[int64]struct{}, project string) ([]ExactMatchResult, error) {
+	safe := sanitizeFTS(keyword)
+	if safe == "" || limit <= 0 {
+		return nil, nil
+	}
+
+	queryLimit := limit
+	if GlobalDecayConfig.Enabled {
+		queryLimit = limit * 5
+	}
+
+	var rows *sql.Rows
+	var err error
+	if project != "" {
+		rows, err = db.QueryContext(ctx, `
+			SELECT c.memory_id, c.id, c.chunk_index, c.chunk_text, bm25(memory_chunks_fts), m.created_at
+			FROM memory_chunks_fts f
+			JOIN memory_chunks c ON c.id = f.rowid
+			JOIN memories m ON m.id = c.memory_id
+			WHERE f.chunk_text MATCH ? AND m.project = ?
+			ORDER BY c.memory_id, c.chunk_index
+			LIMIT ?
+		`, safe, project, queryLimit)
+	} else {
+		rows, err = db.QueryContext(ctx, `
+			SELECT c.memory_id, c.id, c.chunk_index, c.chunk_text, bm25(memory_chunks_fts), m.created_at
+			FROM memory_chunks_fts f
+			JOIN memory_chunks c ON c.id = f.rowid
+			JOIN memories m ON m.id = c.memory_id
+			WHERE f.chunk_text MATCH ?
+			ORDER BY c.memory_id, c.chunk_index
+			LIMIT ?
+		`, safe, queryLimit)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	now := time.Now()
 	var results []ExactMatchResult
 	for rows.Next() {
 		var res ExactMatchResult
-		if err := rows.Scan(&res.MemoryID, &res.ChunkID, &res.ChunkIndex, &res.Text); err != nil {
+		var bm25 float64
+		var createdAt time.Time
+		if err := rows.Scan(&res.MemoryID, &res.ChunkID, &res.ChunkIndex, &res.Text, &bm25, &createdAt); err != nil {
 			return nil, err
 		}
 		seen[res.ChunkID] = struct{}{}
+		
+		score := bm25
+		if GlobalDecayConfig.Enabled {
+			age := AgeInDays(now, createdAt)
+			score = score * DecayFactor(age, GlobalDecayConfig.HalfLifeDays)
+		}
+		res.Score = score
 		results = append(results, res)
 	}
 	return results, nil
 }
 
 func exactSearchSubstring(ctx context.Context, db *sql.DB, keyword string, limit int, seen map[int64]struct{}, project string) ([]ExactMatchResult, error) {
-        if limit <= 0 {
-                return nil, nil
-        }
+	if limit <= 0 {
+		return nil, nil
+	}
 
-        var rows *sql.Rows
-        var err error
-        if project != "" {
-                rows, err = db.QueryContext(ctx, `
-                        SELECT c.memory_id, c.id, c.chunk_index, c.chunk_text
-                        FROM memory_chunks c
-                        JOIN memories m ON m.id = c.memory_id
-                        WHERE instr(lower(c.chunk_text), lower(?)) > 0 AND m.project = ?
-                        ORDER BY c.memory_id, c.chunk_index
-                        LIMIT ?
-                `, keyword, project, limit+len(seen))
-        } else {
-                rows, err = db.QueryContext(ctx, `
-                        SELECT c.memory_id, c.id, c.chunk_index, c.chunk_text
-                        FROM memory_chunks c
-                        WHERE instr(lower(c.chunk_text), lower(?)) > 0
-                        ORDER BY c.memory_id, c.chunk_index
-                        LIMIT ?
-                `, keyword, limit+len(seen))
-        }
-        if err != nil {
-                return nil, err
-        }
-        defer rows.Close()
+	queryLimit := limit + len(seen)
+	if GlobalDecayConfig.Enabled {
+		queryLimit = limit * 5
+	}
+
+	var rows *sql.Rows
+	var err error
+	if project != "" {
+		rows, err = db.QueryContext(ctx, `
+			SELECT c.memory_id, c.id, c.chunk_index, c.chunk_text, m.created_at
+			FROM memory_chunks c
+			JOIN memories m ON m.id = c.memory_id
+			WHERE instr(lower(c.chunk_text), lower(?)) > 0 AND m.project = ?
+			ORDER BY c.memory_id, c.chunk_index
+			LIMIT ?
+		`, keyword, project, queryLimit)
+	} else {
+		rows, err = db.QueryContext(ctx, `
+			SELECT c.memory_id, c.id, c.chunk_index, c.chunk_text, m.created_at
+			FROM memory_chunks c
+			JOIN memories m ON m.id = c.memory_id
+			WHERE instr(lower(c.chunk_text), lower(?)) > 0
+			ORDER BY c.memory_id, c.chunk_index
+			LIMIT ?
+		`, keyword, queryLimit)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	now := time.Now()
 	var results []ExactMatchResult
 	for rows.Next() {
 		var res ExactMatchResult
-		if err := rows.Scan(&res.MemoryID, &res.ChunkID, &res.ChunkIndex, &res.Text); err != nil {
+		var createdAt time.Time
+		if err := rows.Scan(&res.MemoryID, &res.ChunkID, &res.ChunkIndex, &res.Text, &createdAt); err != nil {
 			return nil, err
 		}
 		if _, ok := seen[res.ChunkID]; ok {
 			continue
 		}
 		seen[res.ChunkID] = struct{}{}
+		
+		score := -0.0001
+		if GlobalDecayConfig.Enabled {
+			age := AgeInDays(now, createdAt)
+			score = score * DecayFactor(age, GlobalDecayConfig.HalfLifeDays)
+		}
+		res.Score = score
 		results = append(results, res)
-		if len(results) >= limit {
+		
+		if !GlobalDecayConfig.Enabled && len(results) >= limit {
 			break
 		}
 	}
