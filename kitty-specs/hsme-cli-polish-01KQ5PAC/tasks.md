@@ -11,9 +11,9 @@
 
 | ID | Description | WP | Parallel |
 |----|-------------|----|----------|
-| T001 | Rewrite FormatText for `store` result: readable `Stored memory {id} [{type}]` | WP01 | [P] |
-| T002 | Rewrite FormatText for `search-fuzzy` and `search-exact`: one line per result with score | WP01 | [P] |
-| T003 | Rewrite FormatText for `explore`, `admin backup`, `admin restore`, `admin retry-failed`: structured summaries | WP01 | [P] |
+| T001 | Rewrite FormatText for `store` result: readable `Stored memory {id} [{type}]` | WP01 | [P] | [D] |
+| T002 | Rewrite FormatText for `search-fuzzy` and `search-exact`: one line per result with score | WP01 | [D] |
+| T003 | Rewrite FormatText for `explore`, `admin backup`, `admin restore`, `admin retry-failed`: structured summaries | WP01 | [D] |
 | T004 | Fix backup naming: `time.Now().UTC().Format("20060102T150405Z")` | WP02 | [P] |
 | T005 | Fix restore order: cleanup WAL/SHM BEFORE atomic rename | WP02 | [P] |
 | T006 | Fix flag parsing after positional: re-parse trailing flags from `os.Args` | WP02 |  |
@@ -32,9 +32,9 @@
 
 ### Included subtasks
 
-- [ ] T001 Rewrite FormatText for `store` result
-- [ ] T002 Rewrite FormatText for `search-fuzzy` and `search-exact`
-- [ ] T003 Rewrite FormatText for `explore`, `admin backup`, `admin restore`, `admin retry-failed`
+- [x] T001 Rewrite FormatText for `store` result
+- [x] T002 Rewrite FormatText for `search-fuzzy` and `search-exact`
+- [x] T003 Rewrite FormatText for `explore`, `admin backup`, `admin restore`, `admin retry-failed`
 
 ### Implementation sketch
 
