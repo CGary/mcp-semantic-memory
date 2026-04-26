@@ -106,3 +106,4 @@ Verify that:
 - 2026-04-26T03:29:48Z – gemini:1.5-pro:architect:implementer – shell_pid=1589202 – Started implementation via action command
 - 2026-04-26T03:35:01Z – gemini:1.5-pro:architect:implementer – shell_pid=1589202 – Search project filter surface implemented. search_fuzzy and search_exact now accept optional project argument, and StoreContext now persists project metadata.
 - 2026-04-26T03:35:14Z – gemini:1.5-pro:architect:reviewer – shell_pid=1596609 – Started review via action command
+- 2026-04-26T03:35:28Z – gemini:1.5-pro:architect:reviewer – shell_pid=1596609 – Review passed: Project filtering is correctly implemented across all search paths (lexical, semantic, and exact) and exposed via MCP tools without breaking existing contracts.
