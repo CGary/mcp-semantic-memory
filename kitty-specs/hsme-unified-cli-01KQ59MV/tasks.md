@@ -19,15 +19,15 @@
 | T006 | Wire `cmd/worker/main.go` to use `bootstrap.OpenWithEmbedder` | WP01 |  | [D] |
 | T007 | Wire `cmd/ops/main.go` to use bootstrap (DB-only or with embedder, TBD per WP) | WP01 |  | [D] |
 | T008 | Add `cli-build` and `cli-install` justfile targets | WP01 |  | [D] |
-| T009 | Create `cmd/cli/output.go` — TTY detection, text/JSON formatting, ANSI colors | WP02 | [P] |
-| T010 | Create `cmd/cli/flags.go` — shared flag definitions (--db, --ollama-host, --embedding-model, --format) | WP02 | [P] |
-| T011 | Create `cmd/cli/help.go` — top-level help and per-subcommand help | WP02 | [P] |
-| T012 | Create `cmd/cli/main.go` — entry point, subcommand dispatcher, --help handling | WP02 |  |
-| T013 | Create `cmd/cli/store.go` — `hsme-cli store` with stdin read, --source-type, --supersedes, --force-reingest | WP02 |  |
-| T014 | Create `cmd/cli/search.go` — `hsme-cli search-fuzzy` and `hsme-cli search-exact` handlers | WP02 |  |
-| T015 | Create `cmd/cli/explore.go` — `hsme-cli explore` handler | WP02 |  |
-| T016 | Create `cmd/cli/status.go` — `hsme-cli status` with --watch, --interval, worker detection | WP02 |  |
-| T017 | Create `cmd/cli/admin.go` — `hsme-cli admin retry-failed`, `backup`, `restore` dispatch | WP02 |  |
+| T009 | Create `cmd/cli/output.go` — TTY detection, text/JSON formatting, ANSI colors | WP02 | [D] |
+| T010 | Create `cmd/cli/flags.go` — shared flag definitions (--db, --ollama-host, --embedding-model, --format) | WP02 | [D] |
+| T011 | Create `cmd/cli/help.go` — top-level help and per-subcommand help | WP02 | [D] |
+| T012 | Create `cmd/cli/main.go` — entry point, subcommand dispatcher, --help handling | WP02 |  | [D] |
+| T013 | Create `cmd/cli/store.go` — `hsme-cli store` with stdin read, --source-type, --supersedes, --force-reingest | WP02 |  | [D] |
+| T014 | Create `cmd/cli/search.go` — `hsme-cli search-fuzzy` and `hsme-cli search-exact` handlers | WP02 |  | [D] |
+| T015 | Create `cmd/cli/explore.go` — `hsme-cli explore` handler | WP02 |  | [D] |
+| T016 | Create `cmd/cli/status.go` — `hsme-cli status` with --watch, --interval, worker detection | WP02 |  | [D] |
+| T017 | Create `cmd/cli/admin.go` — `hsme-cli admin retry-failed`, `backup`, `restore` dispatch | WP02 |  | [D] |
 | T018 | Write `cmd/cli/*_test.go` — table-driven unit tests for flag parsing, dispatch, format selection, error messages | WP03 |  |
 | T019 | Write `tests/modules/cli_test.go` — end-to-end CLI integration tests against ephemeral DB | WP03 |  |
 | T020 | Create `src/core/admin/retry.go` — re-queue failed/exhausted tasks | WP04 |  |
@@ -96,15 +96,15 @@ None (this is the first WP).
 
 ### Included subtasks
 
-- [ ] T009 Create `cmd/cli/output.go` — TTY detection, text/JSON formatting, ANSI colors
-- [ ] T010 Create `cmd/cli/flags.go` — shared flag definitions (--db, --ollama-host, --embedding-model, --format)
-- [ ] T011 Create `cmd/cli/help.go` — top-level help and per-subcommand help
-- [ ] T012 Create `cmd/cli/main.go` — entry point, subcommand dispatcher, --help handling
-- [ ] T013 Create `cmd/cli/store.go` — `hsme-cli store` with stdin read, --source-type, --supersedes, --force-reingest
-- [ ] T014 Create `cmd/cli/search.go` — `hsme-cli search-fuzzy` and `hsme-cli search-exact` handlers
-- [ ] T015 Create `cmd/cli/explore.go` — `hsme-cli explore` handler
-- [ ] T016 Create `cmd/cli/status.go` — `hsme-cli status` with --watch, --interval, worker detection
-- [ ] T017 Create `cmd/cli/admin.go` — `hsme-cli admin retry-failed`, `backup`, `restore` dispatch
+- [x] T009 Create `cmd/cli/output.go` — TTY detection, text/JSON formatting, ANSI colors
+- [x] T010 Create `cmd/cli/flags.go` — shared flag definitions (--db, --ollama-host, --embedding-model, --format)
+- [x] T011 Create `cmd/cli/help.go` — top-level help and per-subcommand help
+- [x] T012 Create `cmd/cli/main.go` — entry point, subcommand dispatcher, --help handling
+- [x] T013 Create `cmd/cli/store.go` — `hsme-cli store` with stdin read, --source-type, --supersedes, --force-reingest
+- [x] T014 Create `cmd/cli/search.go` — `hsme-cli search-fuzzy` and `hsme-cli search-exact` handlers
+- [x] T015 Create `cmd/cli/explore.go` — `hsme-cli explore` handler
+- [x] T016 Create `cmd/cli/status.go` — `hsme-cli status` with --watch, --interval, worker detection
+- [x] T017 Create `cmd/cli/admin.go` — `hsme-cli admin retry-failed`, `backup`, `restore` dispatch
 
 ### Implementation sketch
 
