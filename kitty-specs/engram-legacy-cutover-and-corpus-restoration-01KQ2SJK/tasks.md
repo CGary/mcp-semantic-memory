@@ -17,10 +17,10 @@
 | T008 | Implement born-in-HSME retagging and project backfill from wrapper metadata | WP02 | | [D] |
 | T009 | Implement malformed-row cleanup and per-phase idempotent resume guards | WP02 | | [D] |
 | T010 | Add matcher/backfill tests covering matched, unmatched, malformed, and rerun scenarios | WP02 | | [D] |
-| T011 | Implement orphan discovery and wrapper reconstruction for legacy-only observations | WP03 | |
-| T012 | Ingest orphan observations through `indexer.StoreContext`, then restore legacy metadata and support `--mode=delta` | WP03 | |
-| T013 | Persist and reuse legacy snapshots so delta mode can ingest only post-cutover writes | WP03 | |
-| T014 | Add cutover verification script plus orphan/delta ingestion tests | WP03 | |
+| T011 | Implement orphan discovery and wrapper reconstruction for legacy-only observations | WP03 | | [D] |
+| T012 | Ingest orphan observations through `indexer.StoreContext`, then restore legacy metadata and support `--mode=delta` | WP03 | | [D] |
+| T013 | Persist and reuse legacy snapshots so delta mode can ingest only post-cutover writes | WP03 | | [D] |
+| T014 | Add cutover verification script plus orphan/delta ingestion tests | WP03 | | [D] |
 | T015 | Add optional `project` filtering to core `FuzzySearch` and `ExactSearch` SQL paths | WP04 | |
 | T016 | Thread the optional `project` argument through MCP tool schemas and handlers | WP04 | |
 | T017 | Add search tests for filtered, unfiltered, and empty-result queries, including a rough latency guard | WP04 | |
@@ -78,10 +78,10 @@
 **Dependencies**: WP01, WP02
 **Independent test**: Given legacy observations absent from HSME, full mode ingests them once, delta mode only ingests rows newer than the saved snapshot baseline, and `scripts/verify_cutover.sh` emits the documented TSV contract.
 **Included Subtasks**:
-- [ ] T011 Implement orphan discovery and wrapper reconstruction for legacy-only observations (WP03)
-- [ ] T012 Ingest orphan observations through `indexer.StoreContext`, then restore legacy metadata and support `--mode=delta` (WP03)
-- [ ] T013 Persist and reuse legacy snapshots so delta mode can ingest only post-cutover writes (WP03)
-- [ ] T014 Add cutover verification script plus orphan/delta ingestion tests (WP03)
+- [x] T011 Implement orphan discovery and wrapper reconstruction for legacy-only observations (WP03)
+- [x] T012 Ingest orphan observations through `indexer.StoreContext`, then restore legacy metadata and support `--mode=delta` (WP03)
+- [x] T013 Persist and reuse legacy snapshots so delta mode can ingest only post-cutover writes (WP03)
+- [x] T014 Add cutover verification script plus orphan/delta ingestion tests (WP03)
 **Implementation Sketch**:
 - Reuse the matcher output to derive the anti-join set of orphans.
 - Persist pre-cutover snapshot metadata into the run report in full mode.
