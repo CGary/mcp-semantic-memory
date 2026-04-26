@@ -40,12 +40,36 @@ HSME v1.0.1 integra un sistema de telemetría interno completo persistido en SQL
 just install
 ```
 
+## 🔄 Migración de Legado (Engram)
+
+HSME incluye herramientas para la transición completa desde el sistema Engram original, restaurando metadatos históricos y asegurando la integridad del corpus:
+
+### Flujo de Cutover
+1. **Full Run**: `just migrate full` — Sincroniza metadatos, limpia basura e ingiere huérfanos.
+2. **Cutover**: Desactivar el servidor MCP de Engram en el cliente (Claude Code).
+3. **Delta Replay**: `just migrate delta` — Ingiere cualquier escritura realizada durante la ventana de transición.
+4. **Verificación**: `just verify-cutover` — Compara conteos entre legado y HSME.
+
+Consulta la [Guía de Cutover](docs/legacy-cutover-checklist.md) para el checklist operativo paso a paso.
+
+## 📁 Filtrado por Proyecto
+
+Las herramientas de búsqueda ahora soportan un parámetro opcional `project` para restringir los resultados a un contexto específico:
+
+*   **`search_fuzzy`**: Acepta `project` (string) para filtrar candidatos léxicos y semánticos.
+*   **`search_exact`**: Acepta `project` (string) para búsquedas de subcadenas exactas.
+*   **`store_context`**: Permite asignar un `project` al guardar nuevas memorias.
+
+Si se omite el proyecto, la búsqueda se realiza sobre todo el corpus (comportamiento por defecto).
+
 ## 📂 Operación y Mantenimiento
 
 ### Comandos de Just
 - `just serve`: Inicia el servidor MCP.
 - `just work-bg`: Lanza el worker semántico en segundo plano (GPU acelerado).
 - `just ops-loop`: Corre el runner de mantenimiento y rollups de métricas.
+- `just migrate [full|delta]`: Ejecuta la migración desde Engram legado.
+- `just verify-cutover`: Ejecuta el script de validación de integridad post-migración.
 - `just status`: Instantánea de salud del sistema, progreso de la cola y estado del grafo.
 - `just backup/restore`: Gestión de snapshots atómicos compatibles con WAL.
 

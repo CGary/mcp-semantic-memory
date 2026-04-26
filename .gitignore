@@ -2,6 +2,7 @@
 hsme
 hsme-worker
 hsme-ops
+migrate-legacy
 bin/
 *.exe
 *.so

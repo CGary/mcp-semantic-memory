@@ -16,7 +16,16 @@ build:
         go build -tags "{{GO_TAGS}}" -o hsme ./cmd/hsme
         go build -tags "{{GO_TAGS}}" -o hsme-worker ./cmd/worker
         go build -tags "{{GO_TAGS}}" -o hsme-ops ./cmd/ops
+        go build -tags "{{GO_TAGS}}" -o migrate-legacy ./cmd/migrate-legacy
         @echo "✅ Binarios compilados en la raíz."
+...
+# Ejecutar la migración de legado
+migrate mode="full":
+        ./migrate-legacy --mode={{mode}}
+
+# Verificación de cutover
+verify-cutover:
+        @./scripts/verify_cutover.sh
 
 # Ejecutar tests con soporte para FTS5 y Vectores
 test:

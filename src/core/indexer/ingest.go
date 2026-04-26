@@ -9,7 +9,7 @@ import (
 )
 
 // StoreContext ingests a new memory document.
-func StoreContext(db *sql.DB, content string, sourceType string, supersedesID *int64, forceReingest bool) (int64, error) {
+func StoreContext(db *sql.DB, content string, sourceType string, project string, supersedesID *int64, forceReingest bool) (int64, error) {
 	hash := ComputeHash(content)
 
 	// Arrancamos la tx ANTES del dedup check. Con _txlock=immediate (ver db.go)
@@ -56,13 +56,12 @@ func StoreContext(db *sql.DB, content string, sourceType string, supersedesID *i
 
 	// 5. Insert into memories
 	res, err := tx.Exec(`
-		INSERT INTO memories (raw_content, content_hash, source_type, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`, content, hash, sourceType, "active", time.Now(), time.Now())
+	        INSERT INTO memories (raw_content, content_hash, source_type, project, status, created_at, updated_at)
+	        VALUES (?, ?, ?, ?, ?, ?, ?)
+	`, content, hash, sourceType, project, "active", time.Now(), time.Now())
 	if err != nil {
-		return 0, fmt.Errorf("failed to insert memory: %w", err)
+	        return 0, fmt.Errorf("failed to insert memory: %w", err)
 	}
-
 	memoryID, err := res.LastInsertId()
 	if err != nil {
 		return 0, fmt.Errorf("failed to get last insert id: %w", err)

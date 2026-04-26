@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS memories (
     raw_content TEXT NOT NULL,
     content_hash TEXT NOT NULL,
     source_type TEXT NOT NULL DEFAULT 'manual',
+    project TEXT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     superseded_by INTEGER DEFAULT NULL,
@@ -46,6 +47,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_active_hash ON memories(content_h
 
 CREATE INDEX IF NOT EXISTS idx_memories_status        ON memories(status);
 CREATE INDEX IF NOT EXISTS idx_memories_superseded_by ON memories(superseded_by);
+CREATE INDEX IF NOT EXISTS idx_memories_project       ON memories(project);
 
 -- 3. Chunks derived from the document
 CREATE TABLE IF NOT EXISTS memory_chunks (
@@ -366,9 +368,45 @@ func InitDB(path string) (*sql.DB, error) {
 
 	// Apply schema
 	if _, err := db.Exec(schema); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("failed to apply schema: %w", err)
+	        db.Close()
+	        return nil, fmt.Errorf("failed to apply schema: %w", err)
+	}
+
+	// Migration: add 'project' column to 'memories' if it doesn't exist
+	// sqlite-vec/sqlite3 doesn't support 'ALTER TABLE memories ADD COLUMN IF NOT EXISTS'
+	// until very recent versions, so we check manually.
+	var columnExists bool
+	err = db.QueryRow("SELECT count(*) FROM pragma_table_info('memories') WHERE name='project'").Scan(&columnExists)
+	if err != nil {
+	        // If pragma_table_info fails, fallback to a more compatible check
+	        rows, err := db.Query("PRAGMA table_info(memories)")
+	        if err == nil {
+	                for rows.Next() {
+	                        var cid int
+	                        var name, ctype string
+	                        var notnull, pk int
+	                        var dfltValue interface{}
+	                        if err := rows.Scan(&cid, &name, &ctype, &notnull, &dfltValue, &pk); err == nil {
+	                                if name == "project" {
+	                                        columnExists = true
+	                                        break
+	                                }
+	                        }
+	                }
+	                rows.Close()
+	        }
+	}
+
+	if !columnExists {
+	        if _, err := db.Exec("ALTER TABLE memories ADD COLUMN project TEXT"); err != nil {
+	                db.Close()
+	                return nil, fmt.Errorf("failed to migrate memories table (add project): %w", err)
+	        }
+	        if _, err := db.Exec("CREATE INDEX IF NOT EXISTS idx_memories_project ON memories(project)"); err != nil {
+	                db.Close()
+	                return nil, fmt.Errorf("failed to create index on project: %w", err)
+	        }
 	}
 
 	return db, nil
-}
+	}
