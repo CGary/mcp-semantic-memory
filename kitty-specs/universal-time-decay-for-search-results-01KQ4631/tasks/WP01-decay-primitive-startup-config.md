@@ -14,15 +14,15 @@ requirement_refs:
 planning_base_branch: main
 merge_target_branch: main
 branch_strategy: Planning artifacts for this feature were generated on main. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into main unless the human explicitly redirects the landing branch.
-base_branch: main
-base_commit: cbad757af0b1f5be2f80e9569e196baa712c24db
-created_at: '2026-04-26T06:20:47Z'
+base_branch: kitty/mission-universal-time-decay-for-search-results-01KQ4631
+base_commit: 70a8328789564133a43a98f4ebbbdb0d4e746abd
+created_at: '2026-04-26T06:28:29.917592+00:00'
 subtasks:
 - T001
 - T002
 - T003
-agent: "codex"
-shell_pid: ""
+agent: codex
+shell_pid: '1828909'
 history: []
 agent_profile: implementer-ivan
 authoritative_surface: src/core/search/
