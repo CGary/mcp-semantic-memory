@@ -1,16 +1,16 @@
 {
-  "event_count": 12,
-  "last_event_id": "01KQ5RAYCP1BCJFPKVWV46VKS3",
-  "materialized_at": "2026-04-26T20:40:15.510205+00:00",
-  "mission_number": "",
+  "event_count": 14,
+  "last_event_id": "01KQ5RCPV9H0F707ZWBKAZ1YTG",
+  "materialized_at": "2026-04-26T20:41:13.321965+00:00",
+  "mission_number": "8",
   "mission_slug": "hsme-cli-polish-01KQ5PAC",
   "mission_type": "software-dev",
   "summary": {
-    "approved": 2,
+    "approved": 0,
     "blocked": 0,
     "canceled": 0,
     "claimed": 0,
-    "done": 0,
+    "done": 2,
     "for_review": 0,
     "in_progress": 0,
     "in_review": 0,
@@ -18,18 +18,18 @@
   },
   "work_packages": {
     "WP01": {
-      "actor": "user",
+      "actor": "merge",
       "force_count": 1,
-      "lane": "approved",
-      "last_event_id": "01KQ5QWAEF2DN2FFK01X0ER79V",
-      "last_transition_at": "2026-04-26T20:32:16.335743+00:00"
+      "lane": "done",
+      "last_event_id": "01KQ5RCPT86F0AK94ADBSVEEE5",
+      "last_transition_at": "2026-04-26T20:41:13.288904+00:00"
     },
     "WP02": {
-      "actor": "user",
+      "actor": "merge",
       "force_count": 1,
-      "lane": "approved",
-      "last_event_id": "01KQ5RAYCP1BCJFPKVWV46VKS3",
-      "last_transition_at": "2026-04-26T20:40:15.510205+00:00"
+      "lane": "done",
+      "last_event_id": "01KQ5RCPV9H0F707ZWBKAZ1YTG",
+      "last_transition_at": "2026-04-26T20:41:13.321965+00:00"
     }
   }
 }
