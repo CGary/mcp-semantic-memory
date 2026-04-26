@@ -179,3 +179,7 @@ Verify that:
 - legacy DB is opened read-only
 - schema migration is additive/idempotent
 - report files are written even on failure paths
+
+## Activity Log
+
+- 2026-04-26T03:22:48Z – codex – shell_pid=1573443 – Foundation implemented: CLI skeleton, preflight, backup script, and SQLite project column migration.
