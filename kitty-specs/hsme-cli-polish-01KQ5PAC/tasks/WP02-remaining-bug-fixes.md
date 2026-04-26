@@ -20,8 +20,8 @@ subtasks:
 - T006
 - T007
 - T008
-agent: ''
-shell_pid: '2224354'
+agent: "gemini:o3:implementer:implementer"
+shell_pid: "2224354"
 history:
 - date: '2026-04-26T20:17:55Z'
   action: tasks generated
@@ -304,3 +304,7 @@ hsme-cli status --watch --interval 5s
 **Risk — T007 (graph stats)**: Make sure the `graph` field is `null` in JSON when the query fails (don't crash). Use `omitempty` in the struct tag.
 
 **Reviewer**: Run all validation commands above. Verify restore order by reading `restore.go` and confirming cleanup lines are before the rename line.
+
+## Activity Log
+
+- 2026-04-26T20:32:23Z – gemini:o3:implementer:implementer – shell_pid=2224354 – Assigned agent via action command
