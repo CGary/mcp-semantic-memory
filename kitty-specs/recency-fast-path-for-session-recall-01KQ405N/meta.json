@@ -1,4 +1,16 @@
 {
+  "acceptance_history": [
+    {
+      "acceptance_mode": "pr",
+      "accepted_at": "2026-04-26T05:20:10.664671+00:00",
+      "accepted_by": "gary",
+      "accepted_from_commit": "23b231d001d7b30e694bf994f4c5a5906d89d887"
+    }
+  ],
+  "acceptance_mode": "pr",
+  "accepted_at": "2026-04-26T05:20:10.664671+00:00",
+  "accepted_by": "gary",
+  "accepted_from_commit": "23b231d001d7b30e694bf994f4c5a5906d89d887",
   "created_at": "2026-04-26T04:18:42.445248+00:00",
   "friendly_name": "Recency Fast Path for Session Recall",
   "mission_id": "01KQ405N8N65EAS0WAWFXPS0AY",
