@@ -18,8 +18,8 @@ subtasks:
 - T019
 - T020
 - T021
-agent: codex
-shell_pid: 0
+agent: "gemini:1.5-pro:architect:implementer"
+shell_pid: "1597145"
 history: []
 agent_profile: implementer-ivan
 authoritative_surface: README.md
@@ -117,3 +117,7 @@ Verify that:
 - documented command names match the final `justfile` and binary flags
 - checklist steps reflect the real fail-loud cutover order
 - generated data is not accidentally tracked
+
+## Activity Log
+
+- 2026-04-26T03:35:35Z – gemini:1.5-pro:architect:implementer – shell_pid=1597145 – Started implementation via action command
