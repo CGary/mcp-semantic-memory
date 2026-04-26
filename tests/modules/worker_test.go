@@ -30,6 +30,7 @@ func (m *mockEmbedder) ModelID() string {
 }
 
 type mockGraphExtractor struct{}
+type crossMemoryGraphExtractor struct{}
 
 type flakyLengthEmbedder struct {
 	dim      int
@@ -63,6 +64,28 @@ func (m *mockGraphExtractor) ExtractEntities(ctx context.Context, text string) (
 			{Source: "Entity A", Target: "Entity B", Relation: "DEPENDS_ON"},
 		},
 	}, nil
+}
+
+func (m *crossMemoryGraphExtractor) ExtractEntities(ctx context.Context, text string) (worker.KnowledgeGraph, error) {
+	switch {
+	case strings.Contains(text, "alpha"):
+		return worker.KnowledgeGraph{
+			Nodes: []worker.Node{
+				{Type: "TECH", Name: "Alpha architecture"},
+			},
+			Edges: []worker.Edge{
+				{Source: "Alpha architecture", Target: "BETA SERVICE", Relation: "DEPENDS_ON"},
+			},
+		}, nil
+	case strings.Contains(text, "beta"):
+		return worker.KnowledgeGraph{
+			Nodes: []worker.Node{
+				{Type: "TECH", Name: "Beta service"},
+			},
+		}, nil
+	default:
+		return worker.KnowledgeGraph{}, nil
+	}
 }
 
 func TestLeasingLogic(t *testing.T) {
@@ -288,5 +311,92 @@ func TestWorkerExecution_RechunksOversizedEmbedInput(t *testing.T) {
 	}
 	if status != "completed" {
 		t.Fatalf("Expected task status completed, got %s", status)
+	}
+}
+
+func TestWorkerExecution_ReconcilesCrossMemoryUnresolvedEdges(t *testing.T) {
+	dbPath := "test_worker_unresolved_edges.db"
+	defer os.Remove(dbPath)
+
+	db, err := sqlite.InitDB(dbPath)
+	if err != nil {
+		t.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer db.Close()
+
+	_, err = db.Exec(`
+		INSERT INTO memories (id, raw_content, content_hash, status) VALUES
+			(1, 'alpha memory', 'hash-alpha', 'active'),
+			(2, 'beta memory', 'hash-beta', 'active')`)
+	if err != nil {
+		t.Fatalf("Failed to insert memories: %v", err)
+	}
+	_, err = db.Exec(`
+		INSERT INTO async_tasks (memory_id, task_type, status, created_at) VALUES
+			(1, 'graph_extract', 'pending', '2026-04-26T00:00:00Z'),
+			(2, 'graph_extract', 'pending', '2026-04-26T00:00:01Z')`)
+	if err != nil {
+		t.Fatalf("Failed to insert graph tasks: %v", err)
+	}
+
+	w := worker.NewWorker(db, &mockEmbedder{dim: 768}, &crossMemoryGraphExtractor{}, nil)
+
+	firstTask, err := w.LeaseNextTask(context.Background())
+	if err != nil {
+		t.Fatalf("Failed to lease first task: %v", err)
+	}
+	if firstTask == nil || firstTask.MemoryID != 1 {
+		t.Fatalf("Expected first leased task for memory 1, got %#v", firstTask)
+	}
+	if err := w.ExecuteTask(context.Background(), firstTask); err != nil {
+		t.Fatalf("Failed to execute first graph task: %v", err)
+	}
+
+	var edgeCount int
+	if err := db.QueryRow("SELECT COUNT(*) FROM kg_edge_evidence").Scan(&edgeCount); err != nil {
+		t.Fatalf("Failed to count edge evidence after first task: %v", err)
+	}
+	if edgeCount != 0 {
+		t.Fatalf("Expected unresolved edge to remain deferred after first task, got %d edge evidence rows", edgeCount)
+	}
+	var unresolvedCount int
+	if err := db.QueryRow("SELECT COUNT(*) FROM kg_unresolved_edges").Scan(&unresolvedCount); err != nil {
+		t.Fatalf("Failed to count unresolved edges: %v", err)
+	}
+	if unresolvedCount != 1 {
+		t.Fatalf("Expected 1 unresolved edge after first task, got %d", unresolvedCount)
+	}
+
+	secondTask, err := w.LeaseNextTask(context.Background())
+	if err != nil {
+		t.Fatalf("Failed to lease second task: %v", err)
+	}
+	if secondTask == nil || secondTask.MemoryID != 2 {
+		t.Fatalf("Expected second leased task for memory 2, got %#v", secondTask)
+	}
+	if err := w.ExecuteTask(context.Background(), secondTask); err != nil {
+		t.Fatalf("Failed to execute second graph task: %v", err)
+	}
+
+	err = db.QueryRow(`
+		SELECT COUNT(*)
+		  FROM kg_edge_evidence e
+		  JOIN kg_nodes source ON source.id = e.source_node_id
+		  JOIN kg_nodes target ON target.id = e.target_node_id
+		 WHERE source.canonical_name = 'alpha architecture'
+		   AND target.canonical_name = 'beta service'
+		   AND e.relation_type = 'DEPENDS_ON'
+		   AND e.memory_id = 1`).Scan(&edgeCount)
+	if err != nil {
+		t.Fatalf("Failed to count reconciled edge evidence: %v", err)
+	}
+	if edgeCount != 1 {
+		t.Fatalf("Expected deferred Alpha -> Beta edge evidence to be reconciled, got %d", edgeCount)
+	}
+	if err := db.QueryRow("SELECT COUNT(*) FROM kg_unresolved_edges").Scan(&unresolvedCount); err != nil {
+		t.Fatalf("Failed to count unresolved edges after reconciliation: %v", err)
+	}
+	if unresolvedCount != 0 {
+		t.Fatalf("Expected unresolved edge table to be empty after reconciliation, got %d", unresolvedCount)
 	}
 }

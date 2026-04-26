@@ -300,9 +300,18 @@ func (w *Worker) ExecuteTask(ctx context.Context, task *AsyncTask) error {
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "[worker] error guardando relación: %v\n", err)
 				}
+			} else if err := w.deferUnresolvedEdge(ctx, edge, relation, task.MemoryID); err != nil {
+				fmt.Fprintf(os.Stderr, "[worker] error guardando relación pendiente: %v\n", err)
 			} else {
-				fmt.Fprintf(os.Stderr, "[worker] relación descartada: fuente(%s:%v), destino(%s:%v)\n", edge.Source, okS, edge.Target, okT)
+				fmt.Fprintf(os.Stderr, "[worker] relación pendiente: fuente(%s:%v), destino(%s:%v)\n", edge.Source, okS, edge.Target, okT)
 			}
+		}
+		if err := w.reconcileUnresolvedEdges(ctx); err != nil {
+			if w.Recorder != nil && w.Recorder.Enabled() {
+				_ = w.Recorder.RecordError(ctx, observability.ErrorEvent{TraceID: trace.TraceID, Component: "worker", Operation: "graph_extract", TaskID: task.ID, TaskType: task.TaskType, MemoryID: task.MemoryID, Severity: "error", Message: err.Error()})
+				_ = w.Recorder.FinishTrace(ctx, trace, observability.TraceResult{Status: "error", ErrorMessage: err.Error(), EndedAt: time.Now().UTC()})
+			}
+			return fmt.Errorf("failed to reconcile unresolved graph edges: %w", err)
 		}
 		if w.Recorder != nil && w.Recorder.Enabled() {
 			span, _ := w.Recorder.StartSpan(ctx, observability.StartSpanArgs{TraceID: trace.TraceID, Component: "worker", Operation: "graph_extract", StageName: "extract_and_persist_graph", StartedAt: graphStageStarted})
@@ -345,6 +354,57 @@ func (w *Worker) loadChunks(ctx context.Context, memoryID int64) ([]chunkRecord,
 		chunks = append(chunks, chunk)
 	}
 	return chunks, rows.Err()
+}
+
+func (w *Worker) deferUnresolvedEdge(ctx context.Context, edge Edge, relation string, memoryID int64) error {
+	sourceCanonical, sourceDisplay := indexer.CanonicalizeName(edge.Source)
+	targetCanonical, targetDisplay := indexer.CanonicalizeName(edge.Target)
+	if sourceCanonical == "" || targetCanonical == "" {
+		return nil
+	}
+
+	_, err := w.db.ExecContext(ctx, `
+		INSERT OR IGNORE INTO kg_unresolved_edges(
+			source_name,
+			source_canonical,
+			target_name,
+			target_canonical,
+			relation_type,
+			memory_id
+		)
+		VALUES(?, ?, ?, ?, ?, ?)`,
+		sourceDisplay, sourceCanonical, targetDisplay, targetCanonical, relation, memoryID)
+	return err
+}
+
+func (w *Worker) reconcileUnresolvedEdges(ctx context.Context) error {
+	tx, err := w.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(ctx, `
+		INSERT OR IGNORE INTO kg_edge_evidence(source_node_id, target_node_id, relation_type, memory_id)
+		SELECT source.id, target.id, unresolved.relation_type, unresolved.memory_id
+		  FROM kg_unresolved_edges unresolved
+		  JOIN kg_nodes source ON source.canonical_name = unresolved.source_canonical
+		  JOIN kg_nodes target ON target.canonical_name = unresolved.target_canonical`); err != nil {
+		return err
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM kg_unresolved_edges
+		 WHERE id IN (
+			SELECT unresolved.id
+			  FROM kg_unresolved_edges unresolved
+			  JOIN kg_nodes source ON source.canonical_name = unresolved.source_canonical
+			  JOIN kg_nodes target ON target.canonical_name = unresolved.target_canonical
+		 )`); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func isEmbeddingContextLengthError(err error) bool {

@@ -141,7 +141,28 @@ CREATE INDEX IF NOT EXISTS idx_edge_source    ON kg_edge_evidence(source_node_id
 CREATE INDEX IF NOT EXISTS idx_edge_target    ON kg_edge_evidence(target_node_id);
 CREATE INDEX IF NOT EXISTS idx_edge_memory    ON kg_edge_evidence(memory_id);
 
--- 9. Observability traces
+-- 9. Graph edges whose endpoint nodes were not available when the extractor
+-- produced the relation. The worker reconciles this table after every
+-- graph_extract task so cross-memory task ordering does not permanently lose
+-- valid KG evidence.
+CREATE TABLE IF NOT EXISTS kg_unresolved_edges (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_name TEXT NOT NULL,
+    source_canonical TEXT NOT NULL,
+    target_name TEXT NOT NULL,
+    target_canonical TEXT NOT NULL,
+    relation_type TEXT NOT NULL,
+    memory_id INTEGER NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(source_canonical, target_canonical, relation_type, memory_id),
+    FOREIGN KEY(memory_id) REFERENCES memories(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_unresolved_edges_source ON kg_unresolved_edges(source_canonical);
+CREATE INDEX IF NOT EXISTS idx_unresolved_edges_target ON kg_unresolved_edges(target_canonical);
+CREATE INDEX IF NOT EXISTS idx_unresolved_edges_memory ON kg_unresolved_edges(memory_id);
+
+-- 10. Observability traces
 CREATE TABLE IF NOT EXISTS obs_traces (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     trace_id TEXT NOT NULL UNIQUE,
@@ -172,7 +193,7 @@ CREATE INDEX IF NOT EXISTS idx_obs_traces_tool_started ON obs_traces(tool_name, 
 CREATE INDEX IF NOT EXISTS idx_obs_traces_task_started ON obs_traces(task_type, started_at_utc);
 CREATE INDEX IF NOT EXISTS idx_obs_traces_status_started ON obs_traces(status, started_at_utc);
 
--- 10. Observability spans
+-- 11. Observability spans
 CREATE TABLE IF NOT EXISTS obs_spans (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     trace_id TEXT NOT NULL,
@@ -202,7 +223,7 @@ CREATE INDEX IF NOT EXISTS idx_obs_spans_trace_started ON obs_spans(trace_id, st
 CREATE INDEX IF NOT EXISTS idx_obs_spans_component_stage ON obs_spans(component, stage_name, started_at_utc);
 CREATE INDEX IF NOT EXISTS idx_obs_spans_duration ON obs_spans(duration_us, started_at_utc);
 
--- 11. Observability discrete events
+-- 12. Observability discrete events
 CREATE TABLE IF NOT EXISTS obs_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     trace_id TEXT,
@@ -230,7 +251,7 @@ CREATE INDEX IF NOT EXISTS idx_obs_events_tool_created ON obs_events(tool_name, 
 CREATE INDEX IF NOT EXISTS idx_obs_events_task_created ON obs_events(task_type, created_at_utc);
 CREATE INDEX IF NOT EXISTS idx_obs_events_trace ON obs_events(trace_id, created_at_utc);
 
--- 12. Metric rollups
+-- 13. Metric rollups
 CREATE TABLE IF NOT EXISTS obs_metric_rollups (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     bucket_level TEXT NOT NULL CHECK (bucket_level IN ('minute', 'hour', 'day')),
@@ -263,7 +284,7 @@ CREATE TABLE IF NOT EXISTS obs_metric_rollups (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_obs_metric_rollups_dims
 ON obs_metric_rollups(bucket_level, bucket_start_utc, component, operation_name, ifnull(tool_name, ''), ifnull(task_type, ''), trace_kind);
 
--- 13. Retention policies
+-- 14. Retention policies
 CREATE TABLE IF NOT EXISTS obs_retention_policies (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     policy_name TEXT NOT NULL UNIQUE,
@@ -276,7 +297,7 @@ CREATE TABLE IF NOT EXISTS obs_retention_policies (
     updated_at_utc TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 
--- 14. Rollup/checkpoint jobs
+-- 15. Rollup/checkpoint jobs
 CREATE TABLE IF NOT EXISTS obs_rollup_jobs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     job_name TEXT NOT NULL UNIQUE,
@@ -289,7 +310,7 @@ CREATE TABLE IF NOT EXISTS obs_rollup_jobs (
     updated_at_utc TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 
--- 15. Operator views
+-- 16. Operator views
 CREATE VIEW IF NOT EXISTS obs_recent_slow_operations AS
 SELECT
     e.created_at_utc,
@@ -318,7 +339,7 @@ SELECT
 FROM obs_events e
 WHERE e.event_kind = 'error';
 
--- 16. Default policies and rollup jobs
+-- 17. Default policies and rollup jobs
 INSERT OR IGNORE INTO obs_retention_policies(policy_name, scope_kind, bucket_level, keep_days, sample_rate, slow_threshold_us, enabled) VALUES
     ('raw-traces-default', 'traces', NULL, 7, 0.10, NULL, 1),
     ('raw-spans-default', 'spans', NULL, 7, 0.10, NULL, 1),
@@ -373,36 +394,36 @@ func InitDB(path string) (*sql.DB, error) {
 	var columnExists bool
 	err = db.QueryRow("SELECT count(*) FROM pragma_table_info('memories') WHERE name='project'").Scan(&columnExists)
 	if err != nil {
-	        // If pragma_table_info fails, fallback to a more compatible check
-	        rows, err := db.Query("PRAGMA table_info(memories)")
-	        if err == nil {
-	                for rows.Next() {
-	                        var cid int
-	                        var name, ctype string
-	                        var notnull, pk int
-	                        var dfltValue interface{}
-	                        if err := rows.Scan(&cid, &name, &ctype, &notnull, &dfltValue, &pk); err == nil {
-	                                if name == "project" {
-	                                        columnExists = true
-	                                        break
-	                                }
-	                        }
-	                }
-	                rows.Close()
-	        }
+		// If pragma_table_info fails, fallback to a more compatible check
+		rows, err := db.Query("PRAGMA table_info(memories)")
+		if err == nil {
+			for rows.Next() {
+				var cid int
+				var name, ctype string
+				var notnull, pk int
+				var dfltValue interface{}
+				if err := rows.Scan(&cid, &name, &ctype, &notnull, &dfltValue, &pk); err == nil {
+					if name == "project" {
+						columnExists = true
+						break
+					}
+				}
+			}
+			rows.Close()
+		}
 	}
 
 	if !columnExists {
-	        if _, err := db.Exec("ALTER TABLE memories ADD COLUMN project TEXT"); err != nil {
-	                // ignore error if table doesn't exist yet
-	        }
+		if _, err := db.Exec("ALTER TABLE memories ADD COLUMN project TEXT"); err != nil {
+			// ignore error if table doesn't exist yet
+		}
 	}
 
 	// Apply schema
 	if _, err := db.Exec(schema); err != nil {
-	        db.Close()
-	        return nil, fmt.Errorf("failed to apply schema: %w", err)
+		db.Close()
+		return nil, fmt.Errorf("failed to apply schema: %w", err)
 	}
 
 	return db, nil
-	}
+}
