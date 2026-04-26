@@ -24,10 +24,10 @@
 | T015 | Add optional `project` filtering to core `FuzzySearch` and `ExactSearch` SQL paths | WP04 | | [D] |
 | T016 | Thread the optional `project` argument through MCP tool schemas and handlers | WP04 | | [D] |
 | T017 | Add search tests for filtered, unfiltered, and empty-result queries, including a rough latency guard | WP04 | | [D] |
-| T018 | Add `justfile` targets for building/running the migrator and keep migration outputs ignored from Git | WP05 | [P] |
-| T019 | Update repository-facing documentation for the migrator workflow, backup expectations, and delta cutover sequence | WP05 | |
-| T020 | Document the new `project` filter and the single-source-of-truth cutover outcome for operators | WP05 | |
-| T021 | Add a concise operator checklist artifact for T0/T+24h cutover verification from the repo root | WP05 | [P] |
+| T018 | Add `justfile` targets for building/running the migrator and keep migration outputs ignored from Git | WP05 | [D] |
+| T019 | Update repository-facing documentation for the migrator workflow, backup expectations, and delta cutover sequence | WP05 | | [D] |
+| T020 | Document the new `project` filter and the single-source-of-truth cutover outcome for operators | WP05 | | [D] |
+| T021 | Add a concise operator checklist artifact for T0/T+24h cutover verification from the repo root | WP05 | [D] |
 
 ## WP01: Migrator Foundation, Backup, and Schema
 **Goal**: Establish the migrator's executable foundation, fail-safe backup/report infrastructure, and the schema change that introduces `memories.project`.
@@ -119,10 +119,10 @@
 **Dependencies**: WP03, WP04
 **Independent test**: A fresh operator can discover the migrator build target, follow the repo docs to run full + delta + verification steps, and find the `project` filter documented without opening mission planning artifacts.
 **Included Subtasks**:
-- [ ] T018 Add `justfile` targets for building/running the migrator and keep migration outputs ignored from Git (WP05)
-- [ ] T019 Update repository-facing documentation for the migrator workflow, backup expectations, and delta cutover sequence (WP05)
-- [ ] T020 Document the new `project` filter and the single-source-of-truth cutover outcome for operators (WP05)
-- [ ] T021 Add a concise operator checklist artifact for T0/T+24h cutover verification from the repo root (WP05)
+- [x] T018 Add `justfile` targets for building/running the migrator and keep migration outputs ignored from Git (WP05)
+- [x] T019 Update repository-facing documentation for the migrator workflow, backup expectations, and delta cutover sequence (WP05)
+- [x] T020 Document the new `project` filter and the single-source-of-truth cutover outcome for operators (WP05)
+- [x] T021 Add a concise operator checklist artifact for T0/T+24h cutover verification from the repo root (WP05)
 **Implementation Sketch**:
 - Add the operator-facing build/run targets first.
 - Update README and any lightweight ops doc/checklist second so the repository itself explains the cutover workflow.
