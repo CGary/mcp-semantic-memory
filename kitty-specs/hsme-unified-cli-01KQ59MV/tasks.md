@@ -28,8 +28,8 @@
 | T015 | Create `cmd/cli/explore.go` — `hsme-cli explore` handler | WP02 |  | [D] |
 | T016 | Create `cmd/cli/status.go` — `hsme-cli status` with --watch, --interval, worker detection | WP02 |  | [D] |
 | T017 | Create `cmd/cli/admin.go` — `hsme-cli admin retry-failed`, `backup`, `restore` dispatch | WP02 |  | [D] |
-| T018 | Write `cmd/cli/*_test.go` — table-driven unit tests for flag parsing, dispatch, format selection, error messages | WP03 |  |
-| T019 | Write `tests/modules/cli_test.go` — end-to-end CLI integration tests against ephemeral DB | WP03 |  |
+| T018 | Write `cmd/cli/*_test.go` — table-driven unit tests for flag parsing, dispatch, format selection, error messages | WP03 |  | [D] |
+| T019 | Write `tests/modules/cli_test.go` — end-to-end CLI integration tests against ephemeral DB | WP03 |  | [D] |
 | T020 | Create `src/core/admin/retry.go` — re-queue failed/exhausted tasks | WP04 |  |
 | T021 | Create `src/core/admin/backup.go` — SQLite Online Backup API wrapper | WP04 |  |
 | T022 | Create `src/core/admin/restore.go` — atomic restore with integrity check + WAL/SHM cleanup | WP04 |  |
@@ -146,8 +146,8 @@ T009, T010, T011 are independently implementable (different files, no shared sta
 
 ### Included subtasks
 
-- [ ] T018 Write `cmd/cli/*_test.go` — table-driven unit tests for flag parsing, dispatch, format selection, error messages
-- [ ] T019 Write `tests/modules/cli_test.go` — end-to-end CLI integration tests against ephemeral DB
+- [x] T018 Write `cmd/cli/*_test.go` — table-driven unit tests for flag parsing, dispatch, format selection, error messages
+- [x] T019 Write `tests/modules/cli_test.go` — end-to-end CLI integration tests against ephemeral DB
 
 ### Implementation sketch
 
