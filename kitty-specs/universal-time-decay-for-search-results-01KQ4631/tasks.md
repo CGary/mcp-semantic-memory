@@ -9,10 +9,10 @@
 | T001 | Implement the shared decay math primitive and age helper in `src/core/search/decay.go` | WP01 | | [D] |
 | T002 | Load and validate `RRF_TIME_DECAY` / `RRF_HALF_LIFE_DAYS` at server startup | WP01 | | [D] |
 | T003 | Add focused unit tests for decay math, future timestamp clamping, and invalid config values | WP01 | | [D] |
-| T004 | Extend fuzzy-search chunk hydration to fetch `memories.created_at` and preserve the decay-off fast path | WP02 | |
-| T005 | Apply the decay factor inside fuzzy chunk scoring before per-memory aggregation | WP02 | |
-| T006 | Add decay-aware exact-search ordering for both FTS5 BM25 rows and substring fallback rows | WP02 | |
-| T007 | Add integration tests and golden fixtures proving byte-equivalence when decay is off and expected reordering when decay is on | WP02 | |
+| T004 | Extend fuzzy-search chunk hydration to fetch `memories.created_at` and preserve the decay-off fast path | WP02 | | [D] |
+| T005 | Apply the decay factor inside fuzzy chunk scoring before per-memory aggregation | WP02 | | [D] |
+| T006 | Add decay-aware exact-search ordering for both FTS5 BM25 rows and substring fallback rows | WP02 | | [D] |
+| T007 | Add integration tests and golden fixtures proving byte-equivalence when decay is off and expected reordering when decay is on | WP02 | | [D] |
 | T008 | Build `cmd/bench-decay` to run paired OFF/ON evaluations against the frozen corpus | WP03 | |
 | T009 | Emit JSON and Markdown benchmark reports under `data/benchmarks/<run_id>/` and include at least 5 `search_exact` samples | WP03 | |
 | T010 | Add harness smoke coverage for CLI/report generation and read-only DB access | WP03 | |
@@ -33,10 +33,10 @@
 **Prompt**: `tasks/WP02-search-ranking-integration.md` (~360 lines)
 **Dependencies**: WP01
 **Included Subtasks**:
-- [ ] T004 Extend fuzzy-search chunk hydration to fetch `memories.created_at` and preserve the decay-off fast path (WP02)
-- [ ] T005 Apply the decay factor inside fuzzy chunk scoring before per-memory aggregation (WP02)
-- [ ] T006 Add decay-aware exact-search ordering for both FTS5 BM25 rows and substring fallback rows (WP02)
-- [ ] T007 Add integration tests and golden fixtures proving byte-equivalence when decay is off and expected reordering when decay is on (WP02)
+- [x] T004 Extend fuzzy-search chunk hydration to fetch `memories.created_at` and preserve the decay-off fast path (WP02)
+- [x] T005 Apply the decay factor inside fuzzy chunk scoring before per-memory aggregation (WP02)
+- [x] T006 Add decay-aware exact-search ordering for both FTS5 BM25 rows and substring fallback rows (WP02)
+- [x] T007 Add integration tests and golden fixtures proving byte-equivalence when decay is off and expected reordering when decay is on (WP02)
 
 ## WP03: Benchmark Harness & Reports
 **Goal**: Add the standalone benchmark binary that compares decay OFF vs ON and emits auditable reports for both search tools.
