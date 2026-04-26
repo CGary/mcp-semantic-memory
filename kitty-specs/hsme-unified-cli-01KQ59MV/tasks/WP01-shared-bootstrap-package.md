@@ -337,3 +337,4 @@ install: cli-install
 - 2026-04-26T17:44:20Z – gemini:o3:implementer:implementer – shell_pid=2062360 – Addressed all review feedback points.
 - 2026-04-26T17:44:25Z – gemini:o3:reviewer:reviewer – shell_pid=2066529 – Started review via action command
 - 2026-04-26T18:00:49Z – gemini:o3:reviewer:reviewer – shell_pid=2066529 – Rejected: Binaries still tracked.
+- 2026-04-26T18:01:05Z – gemini:o3:reviewer:reviewer – shell_pid=2066529 – Removed all untracked files and moving to review.
