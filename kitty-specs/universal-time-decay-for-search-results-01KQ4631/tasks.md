@@ -13,9 +13,9 @@
 | T005 | Apply the decay factor inside fuzzy chunk scoring before per-memory aggregation | WP02 | | [D] |
 | T006 | Add decay-aware exact-search ordering for both FTS5 BM25 rows and substring fallback rows | WP02 | | [D] |
 | T007 | Add integration tests and golden fixtures proving byte-equivalence when decay is off and expected reordering when decay is on | WP02 | | [D] |
-| T008 | Build `cmd/bench-decay` to run paired OFF/ON evaluations against the frozen corpus | WP03 | |
-| T009 | Emit JSON and Markdown benchmark reports under `data/benchmarks/<run_id>/` and include at least 5 `search_exact` samples | WP03 | |
-| T010 | Add harness smoke coverage for CLI/report generation and read-only DB access | WP03 | |
+| T008 | Build `cmd/bench-decay` to run paired OFF/ON evaluations against the frozen corpus | WP03 | | [D] |
+| T009 | Emit JSON and Markdown benchmark reports under `data/benchmarks/<run_id>/` and include at least 5 `search_exact` samples | WP03 | | [D] |
+| T010 | Add harness smoke coverage for CLI/report generation and read-only DB access | WP03 | | [D] |
 | T011 | Document runtime usage, env vars, benchmark invocation, and rollback flow in `README.md` | WP04 | |
 | T012 | Produce and retain at least one benchmark audit run showing mission acceptance metrics | WP04 | |
 
@@ -43,9 +43,9 @@
 **Prompt**: `tasks/WP03-benchmark-harness-reports.md` (~320 lines)
 **Dependencies**: WP01, WP02
 **Included Subtasks**:
-- [ ] T008 Build `cmd/bench-decay` to run paired OFF/ON evaluations against the frozen corpus (WP03)
-- [ ] T009 Emit JSON and Markdown benchmark reports under `data/benchmarks/<run_id>/` and include at least 5 `search_exact` samples (WP03)
-- [ ] T010 Add harness smoke coverage for CLI/report generation and read-only DB access (WP03)
+- [x] T008 Build `cmd/bench-decay` to run paired OFF/ON evaluations against the frozen corpus (WP03)
+- [x] T009 Emit JSON and Markdown benchmark reports under `data/benchmarks/<run_id>/` and include at least 5 `search_exact` samples (WP03)
+- [x] T010 Add harness smoke coverage for CLI/report generation and read-only DB access (WP03)
 
 ## WP04: Documentation & Acceptance Evidence
 **Goal**: Document the operator workflow and preserve the benchmark evidence needed to accept or roll back the feature safely.
