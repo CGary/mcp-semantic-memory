@@ -167,3 +167,4 @@ If any field is missing from `hsme-cli status`, fix WP02 before deleting this sc
 - 2026-04-26T18:17:18Z – gemini:o3:implementer:implementer – shell_pid=2110010 – Started implementation via action command
 - 2026-04-26T18:18:58Z – gemini:o3:implementer:implementer – shell_pid=2110010 – Refactored justfile and removed legacy files.
 - 2026-04-26T18:19:03Z – gemini:o3:reviewer:reviewer – shell_pid=2112270 – Started review via action command
+- 2026-04-26T18:19:14Z – gemini:o3:reviewer:reviewer – shell_pid=2112270 – Review passed: All legacy scripts removed and justfile updated (including watch-status).
