@@ -1,3 +1,5 @@
+//go:build sqlite_fts5 && sqlite_vec
+
 package main
 
 import (
@@ -20,7 +22,7 @@ func runSearchFuzzy(args []string, cfg bootstrap.Config) {
 
 	RegisterDBFlags(fs, &cfg)
 	fs.Parse(args)
-
+	ScanTrailingFlags(fs)
 	if fs.NArg() < 1 {
 		fmt.Fprintln(os.Stderr, "error: query is required")
 		os.Exit(exitUsage)
@@ -43,7 +45,11 @@ func runSearchFuzzy(args []string, cfg bootstrap.Config) {
 	res := map[string]interface{}{
 		"results": results,
 	}
-	WriteResult(os.Stdout, res, outputFormat)
+	if outputFormat == "json" {
+		WriteResult(os.Stdout, res, outputFormat)
+	} else {
+		WriteResult(os.Stdout, FormatSearchResults(res), outputFormat)
+	}
 }
 
 func runSearchExact(args []string, cfg bootstrap.Config) {
@@ -56,7 +62,7 @@ func runSearchExact(args []string, cfg bootstrap.Config) {
 
 	RegisterDBFlags(fs, &cfg)
 	fs.Parse(args)
-
+	ScanTrailingFlags(fs)
 	if fs.NArg() < 1 {
 		fmt.Fprintln(os.Stderr, "error: keyword is required")
 		os.Exit(exitUsage)
@@ -79,5 +85,9 @@ func runSearchExact(args []string, cfg bootstrap.Config) {
 	res := map[string]interface{}{
 		"results": results,
 	}
-	WriteResult(os.Stdout, res, outputFormat)
+	if outputFormat == "json" {
+		WriteResult(os.Stdout, res, outputFormat)
+	} else {
+		WriteResult(os.Stdout, FormatExactResults(res), outputFormat)
+	}
 }

@@ -1,3 +1,5 @@
+//go:build sqlite_fts5 && sqlite_vec
+
 package main
 
 import (
@@ -17,10 +19,13 @@ import (
 func runStatus(args []string, cfg bootstrap.Config) {
 	fs := flag.NewFlagSet("status", flag.ExitOnError)
 	var watch bool
+	var interval time.Duration
 	fs.BoolVar(&watch, "watch", false, "Watch status changes in real-time")
+	fs.DurationVar(&interval, "interval", 2*time.Second, "Watch refresh interval")
 
 	RegisterDBFlags(fs, &cfg)
 	fs.Parse(args)
+	ScanTrailingFlags(fs)
 
 	db, err := bootstrap.OpenDB(cfg)
 	if err != nil {
@@ -46,15 +51,21 @@ func runStatus(args []string, cfg bootstrap.Config) {
 			break
 		}
 
-		time.Sleep(2 * time.Second)
+		time.Sleep(interval)
 		if IsTTY() {
 			fmt.Print("\033[H\033[2J") // Clear screen
 		}
 	}
 }
 
+type GraphStats struct {
+	Nodes int64 `json:"nodes"`
+	Edges int64 `json:"edges"`
+}
+
 type StatusInfo struct {
 	Memories      int64            `json:"memories"`
+	Graph         GraphStats       `json:"graph"`
 	Tasks         map[string]int64 `json:"tasks"`
 	WorkerRunning bool             `json:"worker_running"`
 	LatestErrors  []string         `json:"latest_errors,omitempty"`
@@ -68,6 +79,16 @@ func getStatus(ctx context.Context, db *sql.DB) (*StatusInfo, error) {
 	err := db.QueryRowContext(ctx, "SELECT count(*) FROM memories").Scan(&info.Memories)
 	if err != nil {
 		return nil, fmt.Errorf("failed to count memories: %w", err)
+	}
+
+	err = db.QueryRowContext(ctx, "SELECT count(*) FROM kg_nodes").Scan(&info.Graph.Nodes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count graph nodes: %w", err)
+	}
+
+	err = db.QueryRowContext(ctx, "SELECT count(*) FROM kg_edge_evidence").Scan(&info.Graph.Edges)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count graph edges: %w", err)
 	}
 
 	rows, err := db.QueryContext(ctx, "SELECT status, count(*) FROM async_tasks GROUP BY status")
@@ -141,6 +162,7 @@ func printStatusText(s *StatusInfo) {
 	}
 	fmt.Printf("Worker Status: %s\n", workerStatus)
 	fmt.Printf("Memories: %d\n", s.Memories)
+	fmt.Printf("Graph:    %d nodes, %d edges\n", s.Graph.Nodes, s.Graph.Edges)
 	fmt.Println("Tasks:")
 	states := []string{"pending", "processing", "completed", "failed"}
 	for _, state := range states {

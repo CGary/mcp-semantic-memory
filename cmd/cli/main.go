@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/hsme/core/src/bootstrap"
 )
@@ -27,6 +28,8 @@ func main() {
 
 	// 4. Parse global flags (stops at first non-flag arg)
 	flag.Parse()
+	// Re-parse trailing global flags
+	ScanTrailingFlags(flag.CommandLine)
 
 	// 5. Remaining args are the subcommand and its flags
 	args := flag.Args()
@@ -66,4 +69,44 @@ func main() {
 		printTopLevelHelp()
 		os.Exit(exitUsage)
 	}
+}
+
+// ScanTrailingFlags scans the leftover arguments for flags that the FlagSet knows about.
+// This allows flags to appear after positional arguments.
+func ScanTrailingFlags(fs *flag.FlagSet) {
+	args := fs.Args()
+	if len(args) == 0 {
+		return
+	}
+
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if strings.HasPrefix(arg, "-") {
+			name := strings.TrimLeft(arg, "-")
+			// Handle name=value
+			if strings.Contains(name, "=") {
+				parts := strings.SplitN(name, "=", 2)
+				name = parts[0]
+				if f := fs.Lookup(name); f != nil {
+					_ = fs.Set(name, parts[1])
+				}
+				continue
+			}
+
+			if f := fs.Lookup(name); f != nil {
+				// Is it a bool flag?
+				if isBoolFlag(f) {
+					_ = fs.Set(name, "true")
+				} else if i+1 < len(args) {
+					_ = fs.Set(name, args[i+1])
+					i++ // Skip value
+				}
+			}
+		}
+	}
+}
+
+func isBoolFlag(f *flag.Flag) bool {
+	bf, ok := f.Value.(interface{ IsBoolFlag() bool })
+	return ok && bf.IsBoolFlag()
 }

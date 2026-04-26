@@ -1,3 +1,5 @@
+//go:build sqlite_fts5 && sqlite_vec
+
 package main
 
 import (
@@ -27,7 +29,7 @@ func runStore(args []string, cfg bootstrap.Config) {
 	RegisterDBFlags(fs, &cfg)
 
 	fs.Parse(args)
-
+	ScanTrailingFlags(fs)
 	// Check if supersedes was actually set
 	fs.Visit(func(f *flag.Flag) {
 		if f.Name == "supersedes" {
@@ -78,8 +80,13 @@ func runStore(args []string, cfg bootstrap.Config) {
 	}
 
 	res := map[string]interface{}{
-		"memory_id": id,
-		"status":    "stored",
+	        "memory_id": id,
+	        "status":    "stored",
 	}
-	WriteResult(os.Stdout, res, outputFormat)
-}
+	if outputFormat == "json" {
+	        WriteResult(os.Stdout, res, outputFormat)
+	} else {
+	        WriteResult(os.Stdout, FormatStoreResult(res), outputFormat)
+	}
+	}
+

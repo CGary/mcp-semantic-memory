@@ -1,3 +1,5 @@
+//go:build sqlite_fts5 && sqlite_vec
+
 package main
 
 import (
@@ -5,6 +7,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
+
+	"github.com/hsme/core/src/core/search"
 )
 
 func IsTTY() bool {
@@ -28,9 +33,121 @@ func FormatJSON(v interface{}) (string, error) {
 }
 
 func FormatText(v interface{}) string {
-	// Simple string representation for text mode
-	// Subcommands may override this for more complex structures
+	if s, ok := v.(string); ok {
+		return s
+	}
 	return fmt.Sprintf("%v", v)
+}
+
+func FormatStoreResult(v interface{}) string {
+	res, ok := v.(map[string]interface{})
+	if !ok {
+		return FormatText(v)
+	}
+	return fmt.Sprintf("Memory stored successfully. ID: %s", Green(fmt.Sprintf("%v", res["memory_id"])))
+}
+
+func FormatSearchResults(v interface{}) string {
+	res, ok := v.(map[string]interface{})
+	if !ok {
+		return FormatText(v)
+	}
+	results, ok := res["results"].([]search.MemorySearchResult)
+	if !ok {
+		return FormatText(v)
+	}
+
+	if len(results) == 0 {
+		return "No results found."
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Found %d results:\n", len(results)))
+	for i, r := range results {
+		sb.WriteString(fmt.Sprintf("\n%d. %s (Score: %.4f, Coverage: %s)\n", i+1, Green(fmt.Sprintf("Memory %d", r.MemoryID)), r.Score, r.VectorCoverage))
+		if r.IsSuperseded {
+			sb.WriteString(Yellow("   [SUPERSEDED]\n"))
+		}
+		for _, h := range r.Highlights {
+			sb.WriteString(fmt.Sprintf("   - %s\n", h.Text))
+		}
+	}
+	return sb.String()
+}
+
+func FormatExactResults(v interface{}) string {
+	res, ok := v.(map[string]interface{})
+	if !ok {
+		return FormatText(v)
+	}
+	results, ok := res["results"].([]search.ExactMatchResult)
+	if !ok {
+		return FormatText(v)
+	}
+
+	if len(results) == 0 {
+		return "No exact matches found."
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Found %d exact matches:\n", len(results)))
+	for i, r := range results {
+		sb.WriteString(fmt.Sprintf("\n%d. %s (Chunk %d, Index %d)\n", i+1, Green(fmt.Sprintf("Memory %d", r.MemoryID)), r.ChunkID, r.ChunkIndex))
+		sb.WriteString(fmt.Sprintf("   %s\n", r.Text))
+	}
+	return sb.String()
+}
+
+func FormatExploreResult(v interface{}) string {
+	res, ok := v.(*search.TraceResult)
+	if !ok {
+		return FormatText(v)
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Exploration for: %s\n", Yellow(res.Entity)))
+	sb.WriteString(fmt.Sprintf("Nodes: %d, Edges: %d\n", len(res.Nodes), len(res.Edges)))
+	if res.Truncated {
+		sb.WriteString(Red("Result set was truncated due to limits.\n"))
+	}
+	sb.WriteString("\nNodes:\n")
+	for _, n := range res.Nodes {
+		name := n["name"]
+		nodeType := n["type"]
+		id := n["id"]
+		sb.WriteString(fmt.Sprintf("- [%v] %s (%v)\n", id, Green(fmt.Sprintf("%v", name)), nodeType))
+	}
+
+	sb.WriteString("\nConnections:\n")
+	for _, e := range res.Edges {
+		sb.WriteString(fmt.Sprintf("- Memory %d: %d --(%s)--> %d\n", e.MemoryID, e.SourceID, e.RelationType, e.TargetID))
+	}
+
+	return sb.String()
+}
+
+func FormatAdminBackupResult(v interface{}) string {
+	res, ok := v.(map[string]interface{})
+	if !ok {
+		return FormatText(v)
+	}
+	return fmt.Sprintf("Backup created successfully: %s", Green(fmt.Sprintf("%v", res["backup"])))
+}
+
+func FormatAdminRestoreResult(v interface{}) string {
+	res, ok := v.(map[string]interface{})
+	if !ok {
+		return FormatText(v)
+	}
+	return fmt.Sprintf("Database restored successfully from: %s", Green(fmt.Sprintf("%v", res["restore"])))
+}
+
+func FormatAdminRetryResult(v interface{}) string {
+	res, ok := v.(map[string]interface{})
+	if !ok {
+		return FormatText(v)
+	}
+	return fmt.Sprintf("Retry complete. Retried tasks: %s", Green(fmt.Sprintf("%v", res["retried_tasks"])))
 }
 
 func WriteResult(w io.Writer, v interface{}, format string) error {
@@ -39,6 +156,10 @@ func WriteResult(w io.Writer, v interface{}, format string) error {
 		if err != nil {
 			return err
 		}
+		fmt.Fprintln(w, s)
+		return nil
+	}
+	if s, ok := v.(string); ok {
 		fmt.Fprintln(w, s)
 		return nil
 	}

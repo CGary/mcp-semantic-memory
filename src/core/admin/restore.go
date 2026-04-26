@@ -37,22 +37,21 @@ func Restore(ctx context.Context, dbPath string, srcPath string) error {
 		return fmt.Errorf("failed to copy backup to temp: %w", err)
 	}
 
-	// Rename is atomic on Linux/Unix
-	if err := os.Rename(tmpPath, dbPath); err != nil {
-		// Cleanup temp file if rename fails
-		os.Remove(tmpPath)
-		return fmt.Errorf("failed to swap database file: %w", err)
-	}
-
 	// 3. Sidecar cleanup
 	// Removing these ensures that the next connection doesn't try to use
 	// stale WAL/SHM data from the previous database instance.
 	_ = os.Remove(dbPath + "-wal")
 	_ = os.Remove(dbPath + "-shm")
 
-	return nil
-}
+	// Rename is atomic on Linux/Unix
+	if err := os.Rename(tmpPath, dbPath); err != nil {
+	        // Cleanup temp file if rename fails
+	        os.Remove(tmpPath)
+	        return fmt.Errorf("failed to swap database file: %w", err)
+	}
 
+	return nil
+	}
 // copyFile is a helper to copy a file from src to dst.
 func copyFile(src, dst string) error {
 	source, err := os.Open(src)

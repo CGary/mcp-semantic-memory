@@ -1,3 +1,5 @@
+//go:build sqlite_fts5 && sqlite_vec
+
 package main
 
 import (
@@ -53,10 +55,15 @@ func runAdminRetryFailed(args []string, cfg bootstrap.Config) {
 		os.Exit(exitRuntime)
 	}
 
-	WriteResult(os.Stdout, map[string]interface{}{
+	res := map[string]interface{}{
 		"status":        "ok",
 		"retried_tasks": affected,
-	}, outputFormat)
+	}
+	if outputFormat == "json" {
+		WriteResult(os.Stdout, res, outputFormat)
+	} else {
+		WriteResult(os.Stdout, FormatAdminRetryResult(res), outputFormat)
+	}
 }
 
 func runAdminBackup(args []string, cfg bootstrap.Config) {
@@ -67,23 +74,27 @@ func runAdminBackup(args []string, cfg bootstrap.Config) {
 	fs.Parse(args)
 
 	if dest == "" {
-		dest = filepath.Join("backups", fmt.Sprintf("engram-%s.db", time.Now().Format("20060102_150405")))
-		if err := os.MkdirAll("backups", 0755); err != nil {
-			WriteError(os.Stderr, fmt.Errorf("failed to create backups directory: %w", err), exitRuntime, outputFormat)
-			os.Exit(exitRuntime)
-		}
+	        dest = filepath.Join("backups", fmt.Sprintf("engram-%s.db", time.Now().UTC().Format("20060102T150405Z")))
+	        if err := os.MkdirAll("backups", 0755); err != nil {
+	                WriteError(os.Stderr, fmt.Errorf("failed to create backups directory: %w", err), exitRuntime, outputFormat)
+	                os.Exit(exitRuntime)
+	        }
 	}
-
 	err := admin.Backup(context.Background(), cfg.DBPath, dest)
 	if err != nil {
 		WriteError(os.Stderr, err, exitRuntime, outputFormat)
 		os.Exit(exitRuntime)
 	}
 
-	WriteResult(os.Stdout, map[string]interface{}{
+	res := map[string]interface{}{
 		"status": "ok",
 		"backup": dest,
-	}, outputFormat)
+	}
+	if outputFormat == "json" {
+		WriteResult(os.Stdout, res, outputFormat)
+	} else {
+		WriteResult(os.Stdout, FormatAdminBackupResult(res), outputFormat)
+	}
 }
 
 func runAdminRestore(args []string, cfg bootstrap.Config) {
@@ -117,10 +128,15 @@ func runAdminRestore(args []string, cfg bootstrap.Config) {
 		os.Exit(exitRuntime)
 	}
 
-	WriteResult(os.Stdout, map[string]interface{}{
+	res := map[string]interface{}{
 		"status":  "ok",
 		"restore": src,
-	}, outputFormat)
+	}
+	if outputFormat == "json" {
+		WriteResult(os.Stdout, res, outputFormat)
+	} else {
+		WriteResult(os.Stdout, FormatAdminRestoreResult(res), outputFormat)
+	}
 }
 
 func findLatestBackup() (string, error) {

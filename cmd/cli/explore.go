@@ -1,3 +1,5 @@
+//go:build sqlite_fts5 && sqlite_vec
+
 package main
 
 import (
@@ -42,5 +44,10 @@ func runExplore(args []string, cfg bootstrap.Config) {
 		os.Exit(exitRuntime)
 	}
 
-	WriteResult(os.Stdout, result, outputFormat)
-}
+	if outputFormat == "json" {
+	        WriteResult(os.Stdout, result, outputFormat)
+	} else {
+	        WriteResult(os.Stdout, FormatExploreResult(result), outputFormat)
+	}
+	}
+

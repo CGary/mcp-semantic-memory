@@ -2,7 +2,7 @@
   "created_at": "2026-04-26T20:05:00.840463+00:00",
   "friendly_name": "HSME CLI Polish — Fix 6 Bugs",
   "mission_id": "01KQ5PACY0K8RA6HN1ZGB9TPBD",
-  "mission_number": null,
+  "mission_number": 8,
   "mission_slug": "hsme-cli-polish-01KQ5PAC",
   "mission_type": "software-dev",
   "purpose_context": "After the initial hsme-unified-cli mission landed, an audit identified 6 bugs ranging from critical UX failures (wrong output format) to data-safety issues (restore order). This mission fixes them all so the CLI is production-grade.",
