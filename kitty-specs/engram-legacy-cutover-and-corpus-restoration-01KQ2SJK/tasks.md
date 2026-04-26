@@ -21,9 +21,9 @@
 | T012 | Ingest orphan observations through `indexer.StoreContext`, then restore legacy metadata and support `--mode=delta` | WP03 | | [D] |
 | T013 | Persist and reuse legacy snapshots so delta mode can ingest only post-cutover writes | WP03 | | [D] |
 | T014 | Add cutover verification script plus orphan/delta ingestion tests | WP03 | | [D] |
-| T015 | Add optional `project` filtering to core `FuzzySearch` and `ExactSearch` SQL paths | WP04 | |
-| T016 | Thread the optional `project` argument through MCP tool schemas and handlers | WP04 | |
-| T017 | Add search tests for filtered, unfiltered, and empty-result queries, including a rough latency guard | WP04 | |
+| T015 | Add optional `project` filtering to core `FuzzySearch` and `ExactSearch` SQL paths | WP04 | | [D] |
+| T016 | Thread the optional `project` argument through MCP tool schemas and handlers | WP04 | | [D] |
+| T017 | Add search tests for filtered, unfiltered, and empty-result queries, including a rough latency guard | WP04 | | [D] |
 | T018 | Add `justfile` targets for building/running the migrator and keep migration outputs ignored from Git | WP05 | [P] |
 | T019 | Update repository-facing documentation for the migrator workflow, backup expectations, and delta cutover sequence | WP05 | |
 | T020 | Document the new `project` filter and the single-source-of-truth cutover outcome for operators | WP05 | |
@@ -99,9 +99,9 @@
 **Dependencies**: WP01
 **Independent test**: Search results are unchanged when `project` is omitted, restricted correctly when `project` is supplied, and empty cleanly for nonexistent projects.
 **Included Subtasks**:
-- [ ] T015 Add optional `project` filtering to core `FuzzySearch` and `ExactSearch` SQL paths (WP04)
-- [ ] T016 Thread the optional `project` argument through MCP tool schemas and handlers (WP04)
-- [ ] T017 Add search tests for filtered, unfiltered, and empty-result queries, including a rough latency guard (WP04)
+- [x] T015 Add optional `project` filtering to core `FuzzySearch` and `ExactSearch` SQL paths (WP04)
+- [x] T016 Thread the optional `project` argument through MCP tool schemas and handlers (WP04)
+- [x] T017 Add search tests for filtered, unfiltered, and empty-result queries, including a rough latency guard (WP04)
 **Implementation Sketch**:
 - Extend the search-function signatures first, keeping empty-string behavior as a no-op.
 - Update MCP input schemas and argument extraction second.
