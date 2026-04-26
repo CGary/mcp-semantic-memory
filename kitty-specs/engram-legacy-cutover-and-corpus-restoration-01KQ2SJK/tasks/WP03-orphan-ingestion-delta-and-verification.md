@@ -23,8 +23,8 @@ subtasks:
 - T012
 - T013
 - T014
-agent: codex
-shell_pid: 0
+agent: "gemini:1.5-pro:architect:implementer"
+shell_pid: "1584086"
 history: []
 agent_profile: implementer-ivan
 authoritative_surface: cmd/migrate-legacy/
@@ -127,3 +127,7 @@ Verify that:
 - orphan ingestion goes through `indexer.StoreContext`
 - delta mode depends on a persisted baseline rather than wall-clock guesses
 - the verification script is read-only and shell-simple
+
+## Activity Log
+
+- 2026-04-26T03:26:26Z – gemini:1.5-pro:architect:implementer – shell_pid=1584086 – Started implementation via action command
