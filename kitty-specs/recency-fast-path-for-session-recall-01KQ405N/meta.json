@@ -8,5 +8,7 @@
   "purpose_context": "Semantic search ranks results by relevance, not time. When an agent asks 'what did we do last session?' it gets the most semantically similar memory — which could be weeks old — instead of the chronologically newest one. Mission 1 restored real timestamps for the entire corpus. This mission capitalizes on that: a new lightweight tool called recall_recent_session returns the N most recent session_summary memories, filtered optionally by project, ordered by creation date. No embedder, no vector math — just a fast SQL query. Alongside the tool, the HSME agent protocol in CLAUDE.md is updated to direct agents to call recall_recent_session first for recency-style questions, reserving search_fuzzy for semantic exploration. Existing search tools are untouched.",
   "purpose_tldr": "Add a dedicated MCP tool that retrieves recent session summaries by chronological order, and update the agent protocol so recency queries bypass semantic search entirely.",
   "slug": "recency-fast-path-for-session-recall-01KQ405N",
-  "target_branch": "main"
+  "target_branch": "main",
+  "vcs": "git",
+  "vcs_locked_at": "2026-04-26T05:01:51.252296+00:00"
 }

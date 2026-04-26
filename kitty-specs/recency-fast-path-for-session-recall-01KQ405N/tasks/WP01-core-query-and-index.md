@@ -14,12 +14,16 @@ requirement_refs:
 planning_base_branch: main
 merge_target_branch: main
 branch_strategy: Planning artifacts for this feature were generated on main. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into main unless the human explicitly redirects the landing branch.
+base_branch: kitty/mission-recency-fast-path-for-session-recall-01KQ405N
+base_commit: d0ee23282d7ed64afd36c0b94b96765df778cac6
+created_at: '2026-04-26T05:01:51.281709+00:00'
 subtasks:
 - T001
 - T002
 - T003
 - T004
 agent: gemini
+shell_pid: '1719731'
 history: []
 agent_profile: implementer-ivan
 authoritative_surface: src/core/search/
