@@ -1,25 +1,41 @@
 # Future Missions
 
-This folder holds **drafts** of missions that are scoped but not yet created in spec-kitty. Each file captures the intent, scope, dependencies, and likely requirements so future sessions can pick them up without re-deriving the context.
+This folder holds **planning notes for missions that may exist later than the current active mission flow**. These notes are not authoritative once a mission has already been created under `kitty-specs/`.
 
-## Why these aren't real spec-kitty missions yet
+## Important anti-confusion rule
 
-Each future mission depends on data, baselines, or measurements that only exist after a previous mission ships. Specifying them prematurely would lock in thresholds based on assumptions that haven't been validated. The drafts here are **planning notes**, not authoritative specs — they will be regenerated from a clean `/spec-kitty.specify` interview when their dependencies are met.
+Before using any file in `docs/future-missions/`, always check whether the mission already exists in `kitty-specs/`.
 
-## Status
+- If a mission already exists in `kitty-specs/`, the **authoritative artifacts** are the ones under `kitty-specs/<mission-slug>/`.
+- The files in `docs/future-missions/` are then only **historical scoping notes**.
+- Do **not** continue planning from `docs/future-missions/` if a real spec-kitty mission already exists.
 
-| File | Source idea | Depends on | Status |
-|------|-------------|------------|--------|
-| [mission-2-recency-fast-path.md](mission-2-recency-fast-path.md) | `ideas/session-history-recency.md` (Solution 1) | Mission 1 merged (real `created_at` values) | Drafted, not yet created |
-| [mission-3-rrf-time-decay.md](mission-3-rrf-time-decay.md) | `ideas/session-history-recency.md` (Solution 2) | Mission 1 + Mission 2 merged, baseline measured | Drafted, not yet created |
+## Current status as of 2026-04-26
 
-## In-flight mission
+| Mission | Status | Authoritative location |
+|--------|--------|------------------------|
+| Mission 1 — Engram Legacy Cutover & Corpus Restoration | **Real mission exists, implemented/merged historically** | `kitty-specs/engram-legacy-cutover-and-corpus-restoration-01KQ2SJK/` |
+| Mission 2 — Recency Fast Path for Session Recall | **Real mission exists** | `kitty-specs/recency-fast-path-for-session-recall-01KQ405N/` |
+| Mission 3 — RRF Time-Decay in Hybrid Search | **Still future / not yet created** | `docs/future-missions/mission-3-rrf-time-decay.md` |
 
-**Mission 1** — `engram-legacy-cutover-and-corpus-restoration-01KQ2SJK` (active in spec-kitty, see `kitty-specs/`).
+## Why this file exists
+
+These notes are still useful for:
+- preserving original scoping intent,
+- documenting why later missions were split,
+- helping future sessions understand sequencing.
+
+But they are **not** the source of truth after a mission is promoted into `kitty-specs/`.
+
+## In-flight / authoritative mission chain
+
+1. `kitty-specs/engram-legacy-cutover-and-corpus-restoration-01KQ2SJK/`
+2. `kitty-specs/recency-fast-path-for-session-recall-01KQ405N/`
+3. future only: `docs/future-missions/mission-3-rrf-time-decay.md`
 
 ## Other ideas not yet promoted to mission status
 
-These live in `ideas/` and have no scoped draft yet:
+These still live in `ideas/` and have no formal mission yet:
 
-- `ideas/cli-tool.md` — CLI binary `hsme-cli` to consume the four MCP tools from the terminal. Independent of the recency stack; can be picked up in parallel.
-- `ideas/graph-cleanup-maintenance.md` — Janitor job for entity merging and dirty-node pruning in the knowledge graph. Larger scope; benefits from a corpus that has been stable for a while, so naturally comes after the recency missions.
+- `ideas/cli-tool.md` — CLI binary `hsme-cli` to consume MCP tools from the terminal.
+- `ideas/graph-cleanup-maintenance.md` — janitor job for graph cleanup and entity merging.
