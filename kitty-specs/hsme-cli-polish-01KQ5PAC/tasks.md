@@ -14,11 +14,11 @@
 | T001 | Rewrite FormatText for `store` result: readable `Stored memory {id} [{type}]` | WP01 | [P] | [D] |
 | T002 | Rewrite FormatText for `search-fuzzy` and `search-exact`: one line per result with score | WP01 | [D] |
 | T003 | Rewrite FormatText for `explore`, `admin backup`, `admin restore`, `admin retry-failed`: structured summaries | WP01 | [D] |
-| T004 | Fix backup naming: `time.Now().UTC().Format("20060102T150405Z")` | WP02 | [P] |
-| T005 | Fix restore order: cleanup WAL/SHM BEFORE atomic rename | WP02 | [P] |
-| T006 | Fix flag parsing after positional: re-parse trailing flags from `os.Args` | WP02 |  |
-| T007 | Add graph stats (nodes + edges) to `status` output | WP02 |  |
-| T008 | Add `--interval` flag to `status --watch` | WP02 |  |
+| T004 | Fix backup naming: `time.Now().UTC().Format("20060102T150405Z")` | WP02 | [D] |
+| T005 | Fix restore order: cleanup WAL/SHM BEFORE atomic rename | WP02 | [D] |
+| T006 | Fix flag parsing after positional: re-parse trailing flags from `os.Args` | WP02 |  | [D] |
+| T007 | Add graph stats (nodes + edges) to `status` output | WP02 |  | [D] |
+| T008 | Add `--interval` flag to `status --watch` | WP02 |  | [D] |
 
 ---
 
@@ -68,11 +68,11 @@ None (independent, all in same file).
 
 ### Included subtasks
 
-- [ ] T004 Fix backup naming to UTC with `T` separator
-- [ ] T005 Fix restore order: cleanup WAL/SHM before atomic rename
-- [ ] T006 Fix flag parsing: re-parse trailing flags from `os.Args`
-- [ ] T007 Add graph stats (nodes + edges) to `status` output
-- [ ] T008 Add `--interval` flag to `status --watch`
+- [x] T004 Fix backup naming to UTC with `T` separator
+- [x] T005 Fix restore order: cleanup WAL/SHM before atomic rename
+- [x] T006 Fix flag parsing: re-parse trailing flags from `os.Args`
+- [x] T007 Add graph stats (nodes + edges) to `status` output
+- [x] T008 Add `--interval` flag to `status --watch`
 
 ### Implementation sketch
 
