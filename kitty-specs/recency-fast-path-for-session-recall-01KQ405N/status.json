@@ -1,7 +1,7 @@
 {
-  "event_count": 5,
-  "last_event_id": "01KQ42MNTNZJ0HS4R2W13S032P",
-  "materialized_at": "2026-04-26T05:01:51.317995+00:00",
+  "event_count": 6,
+  "last_event_id": "01KQ42Y5FF4TSGZHC71JPNRS12",
+  "materialized_at": "2026-04-26T05:07:02.255131+00:00",
   "mission_number": "",
   "mission_slug": "recency-fast-path-for-session-recall-01KQ405N",
   "mission_type": "software-dev",
@@ -11,18 +11,18 @@
     "canceled": 0,
     "claimed": 0,
     "done": 0,
-    "for_review": 0,
-    "in_progress": 1,
+    "for_review": 1,
+    "in_progress": 0,
     "in_review": 0,
     "planned": 2
   },
   "work_packages": {
     "WP01": {
-      "actor": "implement-command",
+      "actor": "user",
       "force_count": 1,
-      "lane": "in_progress",
-      "last_event_id": "01KQ42MNTNZJ0HS4R2W13S032P",
-      "last_transition_at": "2026-04-26T05:01:51.317995+00:00"
+      "lane": "for_review",
+      "last_event_id": "01KQ42Y5FF4TSGZHC71JPNRS12",
+      "last_transition_at": "2026-04-26T05:07:02.255131+00:00"
     },
     "WP02": {
       "actor": "finalize-tasks",

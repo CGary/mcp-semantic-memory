@@ -116,3 +116,7 @@ Semantic search ranks results by relevance, not time. When an agent asks "what d
 
 ## Reviewer Guidance
 Check that the SQL query exactly matches the constraints (active, session_summary, not superseded) and that the limit is enforced server-side.
+
+## Activity Log
+
+- 2026-04-26T05:07:02Z – gemini – shell_pid=1719731 – Core SQL query for fetching recent sessions and index are implemented.
