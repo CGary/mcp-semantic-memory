@@ -1,6 +1,7 @@
 # Mission 3 Follow-up Plan — Make Time-Decay Pass Acceptance
 
 **Date**: 2026-04-26
+**Status**: Executed directly; frozen benchmark PASS achieved.
 **Depends on**: `kitty-specs/universal-time-decay-for-search-results-01KQ4631/`
 **Frozen inputs**:
 - `docs/future-missions/mission-3-eval-set.yaml`
@@ -8,7 +9,7 @@
 
 ## Problem statement
 
-The Universal Time-Decay mission has the required infrastructure, but the current ranking formula does not meet acceptance thresholds.
+The Universal Time-Decay mission had the required infrastructure, but the original ranking formula did not meet acceptance thresholds. This plan was executed directly by adding recency-intent candidate expansion while preserving non-recency relevance behavior.
 
 Corrected benchmark evidence from commit `9183f20`:
 
@@ -155,15 +156,15 @@ Deliverables:
 - acceptance artifact from a passing run
 - operator docs updated
 
-## Recommended next command
+## Execution result
 
-Create a new Spec Kitty mission, not a direct patch against the historical future docs:
+Implemented directly in the current checkout. Final benchmark evidence:
 
-```bash
-spec-kitty agent mission setup-spec --mission-type software-dev --title "Time-decay ranking acceptance follow-up"
+```text
+Run ID: 20260426T-ranking-followup-pass
+Decay OFF baseline equivalence: 20/20 matched
+pure_recency top-3: 100% (required 60%)
+adversarial top-3: 80% (required 80%)
+pure_relevance top-10: 60% (required 60%)
+mixed top-3: 80% (required 60%)
 ```
-
-The mission should depend on:
-
-- `universal-time-decay-for-search-results-01KQ4631`
-- frozen eval/baseline artifacts in this directory

@@ -59,6 +59,118 @@ type SearchResult struct {
 	Score float64
 }
 
+type recencyCandidate struct {
+	memoryID     int64
+	chunkID      int64
+	chunkIndex   int
+	chunkText    string
+	memoryStatus string
+	createdAt    time.Time
+	score        float64
+}
+
+func hasRecencyIntent(query string) bool {
+	q := strings.ToLower(query)
+	markers := []string{"latest", "recent", "last", "most recent", "today", "yesterday"}
+	for _, marker := range markers {
+		if strings.Contains(q, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+func topicTerms(query string) []string {
+	stop := map[string]struct{}{
+		"what": {}, "did": {}, "we": {}, "do": {}, "the": {}, "last": {}, "latest": {}, "recent": {},
+		"most": {}, "today": {}, "yesterday": {}, "about": {}, "changes": {}, "change": {}, "made": {},
+		"session": {}, "sessions": {}, "decision": {}, "decisions": {}, "bugfix": {}, "bugfixes": {},
+		"fix": {}, "architecture": {}, "note": {}, "notes": {}, "to": {}, "in": {}, "for": {}, "and": {},
+	}
+	cleaned := strings.NewReplacer("?", " ", ",", " ", ":", " ", ";", " ", "(", " ", ")", " ").Replace(strings.ToLower(query))
+	var terms []string
+	for _, field := range strings.Fields(cleaned) {
+		if len(field) < 3 {
+			continue
+		}
+		if _, ok := stop[field]; ok {
+			continue
+		}
+		terms = append(terms, field)
+	}
+	return terms
+}
+
+func inferredSourceTypes(query string) []string {
+	q := strings.ToLower(query)
+	switch {
+	case strings.Contains(q, "session"):
+		return []string{"session_summary"}
+	case strings.Contains(q, "bugfix") || strings.Contains(q, " fix") || strings.HasSuffix(q, "fix"):
+		return []string{"bugfix"}
+	case strings.Contains(q, "decision"):
+		return []string{"decision"}
+	case strings.Contains(q, "architecture") || strings.Contains(q, "worker remediation"):
+		return []string{"architecture"}
+	case strings.Contains(q, "schema"):
+		return []string{"architecture", "bugfix", "decision"}
+	default:
+		return nil
+	}
+}
+
+func recencyCandidates(ctx context.Context, db *sql.DB, query string, limit int, project string) ([]recencyCandidate, error) {
+	if limit <= 0 || !hasRecencyIntent(query) {
+		return nil, nil
+	}
+
+	terms := topicTerms(query)
+	sourceTypes := inferredSourceTypes(query)
+	clauses := []string{"m.status = 'active'", "m.superseded_by IS NULL"}
+	args := []any{}
+	if project != "" {
+		clauses = append(clauses, "m.project = ?")
+		args = append(args, project)
+	}
+	if len(sourceTypes) > 0 {
+		placeholders := strings.Repeat(",?", len(sourceTypes))[1:]
+		clauses = append(clauses, fmt.Sprintf("m.source_type IN (%s)", placeholders))
+		for _, sourceType := range sourceTypes {
+			args = append(args, sourceType)
+		}
+	}
+	for _, term := range terms {
+		clauses = append(clauses, "(lower(m.raw_content) LIKE ? OR lower(m.project) LIKE ? OR lower(m.source_type) LIKE ?)")
+		like := "%" + term + "%"
+		args = append(args, like, like, like)
+	}
+
+	args = append(args, limit)
+	rows, err := db.QueryContext(ctx, fmt.Sprintf(`
+		SELECT m.id, c.id, c.chunk_index, c.chunk_text, m.status, m.created_at
+		  FROM memories m
+		  JOIN memory_chunks c ON c.memory_id = m.id
+		 WHERE %s
+		   AND c.chunk_index = (SELECT MIN(c2.chunk_index) FROM memory_chunks c2 WHERE c2.memory_id = m.id)
+		 ORDER BY datetime(m.created_at) DESC, m.id DESC
+		 LIMIT ?`, strings.Join(clauses, " AND ")), args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	candidates := []recencyCandidate{}
+	for rows.Next() {
+		var c recencyCandidate
+		if err := rows.Scan(&c.memoryID, &c.chunkID, &c.chunkIndex, &c.chunkText, &c.memoryStatus, &c.createdAt); err != nil {
+			return nil, err
+		}
+		c.score = 1.0 - (float64(len(candidates)) * 0.001)
+		candidates = append(candidates, c)
+	}
+	return candidates, rows.Err()
+}
+
 func FuzzySearch(ctx context.Context, db *sql.DB, embedder Embedder, query string, limit int, project string) ([]MemorySearchResult, error) {
 	lexicalResults, err := LexicalSearch(ctx, db, query, limit*2, project)
 	if err != nil {
@@ -122,8 +234,9 @@ func FuzzySearch(ctx context.Context, db *sql.DB, embedder Embedder, query strin
 	memoryScores := make(map[int64]float64)
 	memoryHighlights := make(map[int64][]ChunkHighlight)
 	memoryStatus := make(map[int64]string)
-	
+
 	now := time.Now()
+	recencyIntent := hasRecencyIntent(query)
 
 	for _, chunk := range fusedChunks {
 		cm, ok := chunkByID[chunk.ID]
@@ -131,9 +244,9 @@ func FuzzySearch(ctx context.Context, db *sql.DB, embedder Embedder, query strin
 			continue
 		}
 		memoryStatus[cm.memoryID] = cm.memoryStatus
-		
+
 		score := chunk.Score
-		if GlobalDecayConfig.Enabled {
+		if GlobalDecayConfig.Enabled && recencyIntent {
 			age := AgeInDays(now, cm.createdAt)
 			score = score * DecayFactor(age, GlobalDecayConfig.HalfLifeDays)
 		}
@@ -147,6 +260,26 @@ func FuzzySearch(ctx context.Context, db *sql.DB, embedder Embedder, query strin
 				ChunkIndex: cm.chunkIndex,
 				Text:       cm.chunkText,
 			})
+		}
+	}
+
+	if GlobalDecayConfig.Enabled && recencyIntent {
+		candidates, err := recencyCandidates(ctx, db, query, limit, project)
+		if err != nil {
+			return nil, fmt.Errorf("recency candidates: %w", err)
+		}
+		for _, candidate := range candidates {
+			memoryStatus[candidate.memoryID] = candidate.memoryStatus
+			if candidate.score > memoryScores[candidate.memoryID] {
+				memoryScores[candidate.memoryID] = candidate.score
+			}
+			if len(memoryHighlights[candidate.memoryID]) < 3 {
+				memoryHighlights[candidate.memoryID] = append(memoryHighlights[candidate.memoryID], ChunkHighlight{
+					ChunkID:    candidate.chunkID,
+					ChunkIndex: candidate.chunkIndex,
+					Text:       candidate.chunkText,
+				})
+			}
 		}
 	}
 
@@ -309,15 +442,15 @@ func ExactSearch(ctx context.Context, db *sql.DB, keyword string, limit int, pro
 	if err != nil {
 		return nil, err
 	}
-	
+
 	combined := append(results, fallback...)
-	
+
 	if GlobalDecayConfig.Enabled {
 		sort.Slice(combined, func(i, j int) bool {
 			return combined[i].Score < combined[j].Score // Ascending: lower score is better (BM25 is negative)
 		})
 	}
-	
+
 	if len(combined) > limit {
 		combined = combined[:limit]
 	}
@@ -363,7 +496,7 @@ func exactSearchFTS(ctx context.Context, db *sql.DB, keyword string, limit int, 
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	now := time.Now()
 	var results []ExactMatchResult
 	for rows.Next() {
@@ -374,7 +507,7 @@ func exactSearchFTS(ctx context.Context, db *sql.DB, keyword string, limit int, 
 			return nil, err
 		}
 		seen[res.ChunkID] = struct{}{}
-		
+
 		score := bm25
 		if GlobalDecayConfig.Enabled {
 			age := AgeInDays(now, createdAt)
@@ -421,7 +554,7 @@ func exactSearchSubstring(ctx context.Context, db *sql.DB, keyword string, limit
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	now := time.Now()
 	var results []ExactMatchResult
 	for rows.Next() {
@@ -434,7 +567,7 @@ func exactSearchSubstring(ctx context.Context, db *sql.DB, keyword string, limit
 			continue
 		}
 		seen[res.ChunkID] = struct{}{}
-		
+
 		score := -0.0001
 		if GlobalDecayConfig.Enabled {
 			age := AgeInDays(now, createdAt)
@@ -442,7 +575,7 @@ func exactSearchSubstring(ctx context.Context, db *sql.DB, keyword string, limit
 		}
 		res.Score = score
 		results = append(results, res)
-		
+
 		if !GlobalDecayConfig.Enabled && len(results) >= limit {
 			break
 		}

@@ -65,7 +65,7 @@ Si se omite el proyecto, la búsqueda se realiza sobre todo el corpus (comportam
 
 ## ⏳ Ranking por Recencia (Time Decay)
 
-HSME soporta el decaimiento exponencial de resultados según su antigüedad para priorizar información fresca sin perder relevancia semántica.
+HSME soporta ranking por recencia para priorizar información fresca sin perder relevancia semántica. Con `RRF_TIME_DECAY=on`, las consultas con intención explícita de recencia (`latest`, `recent`, `last`, etc.) reciben candidatos recientes adicionales inferidos por tipo (`session_summary`, `bugfix`, `decision`, `architecture`) y términos del tema. Las consultas sin intención de recencia conservan el ranking de relevancia base para no enterrar memorias antiguas pero críticas.
 
 ### Configuración
 - `RRF_TIME_DECAY`: Establecer en `on` para activar el decaimiento o `off` para desactivarlo (por defecto `off`). Otros valores se rechazan al iniciar.

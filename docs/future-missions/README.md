@@ -16,7 +16,7 @@ Before using any file in `docs/future-missions/`, always check whether the missi
 |--------|--------|------------------------|
 | Mission 1 — Engram Legacy Cutover & Corpus Restoration | **Implemented / merged** | `kitty-specs/engram-legacy-cutover-and-corpus-restoration-01KQ2SJK/` |
 | Mission 2 — Recency Fast Path for Session Recall | **Implemented / accepted** | `kitty-specs/recency-fast-path-for-session-recall-01KQ405N/` |
-| Mission 3 — Universal Time-Decay for Search Results | **Promoted, implemented structurally, but acceptance failed** | `kitty-specs/universal-time-decay-for-search-results-01KQ4631/` |
+| Mission 3 — Universal Time-Decay for Search Results | **Promoted, implemented, follow-up PASS achieved** | `kitty-specs/universal-time-decay-for-search-results-01KQ4631/` |
 | Mission 3 pre-flight eval set | **Frozen input** | `docs/future-missions/mission-3-eval-set.yaml` |
 | Mission 3 pre-flight baseline | **Frozen input** | `docs/future-missions/mission-3-baseline.json`, `mission-3-baseline.md` |
 | Mission 3 original draft | **Historical note only** | `docs/future-missions/mission-3-rrf-time-decay.md` |
@@ -39,19 +39,19 @@ A later corrective commit made the benchmark harness honest and comparable with 
 After that correction, the benchmark shows:
 
 - Decay OFF baseline equivalence: **PASS** (`20/20` frozen queries matched baseline)
-- Overall acceptance: **FAIL**
+- Original post-harness-correction acceptance: **FAIL**
   - `pure_recency` top-3: `20%`, required `60%`
   - `adversarial` top-3: `0%`, required `80%`
   - `pure_relevance` top-10: `80%`, required `60%` — PASS
   - `mixed` top-3: `60%`, required `60%` — PASS
 
-Therefore, the code/harness exists, but Mission 3 still needs a follow-up ranking mission before the product requirement can be considered complete.
+Therefore, the code/harness exists and the follow-up ranking fix now satisfies the frozen acceptance thresholds.
 
 ## In-flight / authoritative mission chain
 
 1. `kitty-specs/engram-legacy-cutover-and-corpus-restoration-01KQ2SJK/` — complete
 2. `kitty-specs/recency-fast-path-for-session-recall-01KQ405N/` — complete
-3. `kitty-specs/universal-time-decay-for-search-results-01KQ4631/` — merged but acceptance-failing; requires follow-up
+3. `kitty-specs/universal-time-decay-for-search-results-01KQ4631/` — merged; follow-up ranking fix passes frozen acceptance
 
 ## Other ideas not yet promoted to mission status
 
@@ -60,6 +60,6 @@ These still live in `ideas/` and have no formal mission yet:
 - `ideas/cli-tool.md` — CLI binary `hsme-cli` to consume MCP tools from the terminal.
 - `ideas/graph-cleanup-maintenance.md` — janitor job for graph cleanup and entity merging.
 
-## Recommended next mission
+## Follow-up completion
 
-Promote `docs/future-missions/mission-3-follow-up-plan.md` into a new Spec Kitty mission focused on ranking-quality acceptance. The existing Universal Time-Decay mission should be treated as infrastructure plus failed acceptance evidence, not as a complete product outcome.
+The plan in `docs/future-missions/mission-3-follow-up-plan.md` has been executed directly. The ranking follow-up uses recency-intent candidate expansion while preserving non-recency/adversarial relevance behavior, and the frozen benchmark now passes.

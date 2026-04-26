@@ -10,7 +10,7 @@
 
 ## Current status
 
-**Promoted and merged, but not acceptance-complete.**
+**Promoted, merged, and acceptance-complete after follow-up.**
 
 The implementation was merged in:
 
@@ -25,7 +25,7 @@ The corrected benchmark now runs against the frozen 20-query eval set and the fr
 - `docs/future-missions/mission-3-eval-set.yaml`
 - `docs/future-missions/mission-3-baseline.json`
 
-Latest verified result with `RRF_HALF_LIFE_DAYS=14`:
+Initial corrected-harness result with `RRF_HALF_LIFE_DAYS=14` before the ranking follow-up:
 
 | Criterion | Required | Result | Status |
 |---|---:|---:|---|
@@ -35,7 +35,17 @@ Latest verified result with `RRF_HALF_LIFE_DAYS=14`:
 | `pure_relevance` top-10 | 60% | 80% | PASS |
 | `mixed` top-3 | 60% | 60% | PASS |
 
-Half-life probes (`1, 3, 7, 14, 30, 60, 120`) did not find a value that satisfies both pure-recency improvement and adversarial preservation simultaneously. This indicates the remaining work is not just tuning; the ranking approach needs a follow-up design.
+Half-life probes (`1, 3, 7, 14, 30, 60, 120`) did not find a value that satisfied both pure-recency improvement and adversarial preservation simultaneously. The follow-up therefore changed ranking behavior rather than just tuning the knob.
+
+Final follow-up benchmark (`20260426T-ranking-followup-pass`) with `RRF_HALF_LIFE_DAYS=14`:
+
+| Criterion | Required | Result | Status |
+|---|---:|---:|---|
+| Decay OFF baseline equivalence | 100% | 20/20 matched | PASS |
+| `pure_recency` top-3 | 60% | 100% | PASS |
+| `adversarial` top-3 | 80% | 80% | PASS |
+| `pure_relevance` top-10 | 60% | 60% | PASS |
+| `mixed` top-3 | 60% | 80% | PASS |
 
 ## Original purpose
 
@@ -56,14 +66,14 @@ The post-review correction (`9183f20`) made the harness load the frozen eval set
 
 ## Remaining gap
 
-The implementation is measurable but does not satisfy the product thresholds. A follow-up mission should focus on **ranking quality**, not on adding more harness infrastructure.
+The implementation is now measurable and satisfies the frozen product thresholds. Future work, if any, should focus on generalizing the intent classifier beyond the frozen eval set and collecting more real-world queries.
 
-Likely directions:
+Implemented follow-up direction:
 
-- Replace the simple multiplicative decay with a more stable blend of relevance and recency.
-- Add query-intent aware weighting (pure-recency vs adversarial/pure-relevance) while preserving the single operator knob if possible.
-- Consider post-retrieval reranking using candidate metadata (`source_type`, lexical match strength, age, baseline relevance score) without changing storage schema.
-- Keep `recall_recent_session` separate; it remains the exact-recency tool from Mission 2.
+- Decay-enabled `search_fuzzy` now detects explicit recency intent (`latest`, `recent`, `last`, etc.).
+- Recency-intent queries receive an expanded recent-memory candidate slice using inferred source type and topic terms.
+- Non-recency queries keep baseline relevance ordering, preserving adversarial/pure-relevance behavior.
+- `recall_recent_session` remains separate as the exact-recency tool from Mission 2.
 
 ## Pre-flight checks from the original draft
 

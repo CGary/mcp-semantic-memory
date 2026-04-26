@@ -104,7 +104,7 @@ func TestSearchDecay(t *testing.T) {
 	// Test 2: Decay ON reordering
 	search.GlobalDecayConfig = search.DecayConfig{Enabled: true, HalfLifeDays: 14}
 
-	fuzzyOn, err := search.FuzzySearch(ctx, db, nil, "collision", 10, "")
+	fuzzyOn, err := search.FuzzySearch(ctx, db, nil, "latest collision", 10, "")
 	if err != nil {
 		t.Fatalf("fuzzy search failed: %v", err)
 	}
