@@ -3,6 +3,10 @@ work_package_id: WP01
 title: Shared Bootstrap Package
 dependencies: []
 requirement_refs:
+- FR-050
+- FR-051
+- FR-052
+- FR-053
 - FR-060
 - FR-061
 - FR-062
@@ -11,7 +15,7 @@ requirement_refs:
 - FR-071
 planning_base_branch: main
 merge_target_branch: main
-branch_strategy: 'Current branch at workflow start: main. Planning/base branch for this feature: main. Completed changes must merge into main.'
+branch_strategy: Planning artifacts for this feature were generated on main. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into main unless the human explicitly redirects the landing branch.
 subtasks:
 - T001
 - T002
@@ -31,11 +35,12 @@ authoritative_surface: src/bootstrap/
 execution_mode: code_change
 model: ''
 owned_files:
-- src/bootstrap/
+- src/bootstrap/bootstrap.go
+- src/bootstrap/config.go
+- src/bootstrap/bootstrap_test.go
 - cmd/hsme/main.go
 - cmd/worker/main.go
 - cmd/ops/main.go
-- justfile
 role: ''
 tags: []
 ---
