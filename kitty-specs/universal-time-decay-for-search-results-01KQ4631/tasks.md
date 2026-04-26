@@ -16,8 +16,8 @@
 | T008 | Build `cmd/bench-decay` to run paired OFF/ON evaluations against the frozen corpus | WP03 | | [D] |
 | T009 | Emit JSON and Markdown benchmark reports under `data/benchmarks/<run_id>/` and include at least 5 `search_exact` samples | WP03 | | [D] |
 | T010 | Add harness smoke coverage for CLI/report generation and read-only DB access | WP03 | | [D] |
-| T011 | Document runtime usage, env vars, benchmark invocation, and rollback flow in `README.md` | WP04 | |
-| T012 | Produce and retain at least one benchmark audit run showing mission acceptance metrics | WP04 | |
+| T011 | Document runtime usage, env vars, benchmark invocation, and rollback flow in `README.md` | WP04 | | [D] |
+| T012 | Produce and retain at least one benchmark audit run showing mission acceptance metrics | WP04 | | [D] |
 
 ## WP01: Decay Primitive & Startup Config
 **Goal**: Create the shared time-decay primitive, validate the env-driven config, and wire server startup so invalid values fail loudly before any MCP request is served.
@@ -52,5 +52,5 @@
 **Prompt**: `tasks/WP04-documentation-acceptance-evidence.md` (~220 lines)
 **Dependencies**: WP03
 **Included Subtasks**:
-- [ ] T011 Document runtime usage, env vars, benchmark invocation, and rollback flow in `README.md` (WP04)
-- [ ] T012 Produce and retain at least one benchmark audit run showing mission acceptance metrics (WP04)
+- [x] T011 Document runtime usage, env vars, benchmark invocation, and rollback flow in `README.md` (WP04)
+- [x] T012 Produce and retain at least one benchmark audit run showing mission acceptance metrics (WP04)
