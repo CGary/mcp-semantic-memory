@@ -8,5 +8,7 @@
   "purpose_context": "After the initial hsme-unified-cli mission landed, an audit identified 6 bugs ranging from critical UX failures (wrong output format) to data-safety issues (restore order). This mission fixes them all so the CLI is production-grade.",
   "purpose_tldr": "Fix 6 bugs in hsme-cli: flag parsing, FormatText, backup naming, restore order, graph stats, and --interval.",
   "slug": "hsme-cli-polish-01KQ5PAC",
-  "target_branch": "main"
+  "source_description": "Post-audit of hsme-unified-cli-01KQ59MV. Audit log at log/partial.txt lists 6 bugs confirmed: #1 flag parsing after positional, #2 FormatText broken, #3 backup naming format, #4 restore order, #5 missing graph stats, #6 missing --interval flag.",
+  "target_branch": "main",
+  "vcs": "git"
 }
