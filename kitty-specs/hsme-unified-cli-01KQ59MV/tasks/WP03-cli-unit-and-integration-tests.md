@@ -195,3 +195,4 @@ tests/modules/cli_test.go    # end-to-end CLI integration tests
 ## Activity Log
 
 - 2026-04-26T18:10:54Z – gemini:o3:implementer:implementer – shell_pid=2100438 – Started implementation via action command
+- 2026-04-26T18:12:46Z – gemini:o3:implementer:implementer – shell_pid=2100438 – Implemented CLI unit and integration tests.
