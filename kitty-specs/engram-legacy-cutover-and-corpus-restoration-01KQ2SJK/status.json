@@ -1,7 +1,7 @@
 {
-  "event_count": 18,
-  "last_event_id": "01KQ3XAM1W4A1WWMWG8BZB3KYS",
-  "materialized_at": "2026-04-26T03:28:58.940831+00:00",
+  "event_count": 19,
+  "last_event_id": "01KQ3XB12PB16C1GH5Y0V4ZWYV",
+  "materialized_at": "2026-04-26T03:29:12.278673+00:00",
   "mission_number": "",
   "mission_slug": "engram-legacy-cutover-and-corpus-restoration-01KQ2SJK",
   "mission_type": "software-dev",
@@ -11,9 +11,9 @@
     "canceled": 0,
     "claimed": 0,
     "done": 0,
-    "for_review": 1,
+    "for_review": 0,
     "in_progress": 0,
-    "in_review": 0,
+    "in_review": 1,
     "planned": 2
   },
   "work_packages": {
@@ -32,11 +32,11 @@
       "last_transition_at": "2026-04-26T03:26:20.314722+00:00"
     },
     "WP03": {
-      "actor": "user",
+      "actor": "gemini:1.5-pro:architect:reviewer",
       "force_count": 1,
-      "lane": "for_review",
-      "last_event_id": "01KQ3XAM1W4A1WWMWG8BZB3KYS",
-      "last_transition_at": "2026-04-26T03:28:58.940831+00:00"
+      "lane": "in_review",
+      "last_event_id": "01KQ3XB12PB16C1GH5Y0V4ZWYV",
+      "last_transition_at": "2026-04-26T03:29:12.278673+00:00"
     },
     "WP04": {
       "actor": "finalize-tasks",
