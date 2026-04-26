@@ -1,28 +1,32 @@
 ---
 work_package_id: WP01
 title: FormatText Rewrite
+dependencies: []
+requirement_refs:
+- FR-002
+planning_base_branch: main
+merge_target_branch: main
+branch_strategy: Planning artifacts for this feature were generated on main. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into main unless the human explicitly redirects the landing branch.
+base_branch: kitty/mission-hsme-cli-polish-01KQ5PAC
+base_commit: 9d65ffa10332509a7c716a87a02fdcb73a5f8c1b
+created_at: '2026-04-26T20:26:31.075308+00:00'
 subtasks:
 - T001
 - T002
 - T003
-dependencies: []
-planning_base_branch: main
-merge_target_branch: main
-branch_strategy: Planning artifacts for this feature were generated on main. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into main unless the human explicitly redirects the landing branch.
-requirement_refs:
-- FR-002
-owned_files:
-- cmd/cli/output.go
-authoritative_surface: cmd/cli/output.go
-execution_mode: code_change
-agent_profile: ""
-role: ""
-agent: ""
-model: ""
+agent: ''
+shell_pid: '2216230'
 history:
-- date: "2026-04-26T20:17:55Z"
+- date: '2026-04-26T20:17:55Z'
   action: tasks generated
   actor: tasks skill
+agent_profile: ''
+authoritative_surface: cmd/cli/output.go
+execution_mode: code_change
+model: ''
+owned_files:
+- cmd/cli/output.go
+role: ''
 ---
 
 ## ⚡ Do This First: Load Agent Profile
