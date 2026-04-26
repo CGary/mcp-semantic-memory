@@ -51,7 +51,7 @@ func TestSearchDecay(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to ingest: %v", err)
 		}
-		
+
 		// Artificially age the document
 		if d.ageDays > 0 {
 			ageDuration := time.Duration(d.ageDays) * 24 * time.Hour
@@ -67,7 +67,7 @@ func TestSearchDecay(t *testing.T) {
 
 	// Test 1: Decay OFF Baseline
 	search.GlobalDecayConfig = search.DecayConfig{Enabled: false, HalfLifeDays: 14}
-	
+
 	fuzzyOff, err := search.FuzzySearch(ctx, db, nil, "collision", 10, "")
 	if err != nil {
 		t.Fatalf("fuzzy search failed: %v", err)
@@ -81,39 +81,35 @@ func TestSearchDecay(t *testing.T) {
 	baselineFile := filepath.Join("testdata", "decay_off_baseline.json")
 	baselineData, err := os.ReadFile(baselineFile)
 	if err != nil {
-		// Create baseline if it doesn't exist
-		err = os.MkdirAll("testdata", 0755)
-		baseline := baselineResult{Fuzzy: fuzzyOff, Exact: exactOff}
-		b, _ := json.MarshalIndent(baseline, "", "  ")
-		os.WriteFile(baselineFile, b, 0644)
-		t.Logf("Created baseline file at %s", baselineFile)
-	} else {
-		var baseline baselineResult
-		json.Unmarshal(baselineData, &baseline)
-		
-		// Verify byte-equivalence (JSON marshalling comparison)
-		currentFuzzyBytes, _ := json.Marshal(fuzzyOff)
-		baselineFuzzyBytes, _ := json.Marshal(baseline.Fuzzy)
-		if string(currentFuzzyBytes) != string(baselineFuzzyBytes) {
-			t.Errorf("Fuzzy decay OFF results do not match baseline")
-		}
+		t.Fatalf("missing committed decay-off baseline fixture %s: %v", baselineFile, err)
+	}
+	var baseline baselineResult
+	if err := json.Unmarshal(baselineData, &baseline); err != nil {
+		t.Fatalf("invalid baseline fixture: %v", err)
+	}
 
-		currentExactBytes, _ := json.Marshal(exactOff)
-		baselineExactBytes, _ := json.Marshal(baseline.Exact)
-		if string(currentExactBytes) != string(baselineExactBytes) {
-			t.Errorf("Exact decay OFF results do not match baseline")
-		}
+	// Verify byte-equivalence (JSON marshalling comparison)
+	currentFuzzyBytes, _ := json.Marshal(fuzzyOff)
+	baselineFuzzyBytes, _ := json.Marshal(baseline.Fuzzy)
+	if string(currentFuzzyBytes) != string(baselineFuzzyBytes) {
+		t.Errorf("Fuzzy decay OFF results do not match baseline")
+	}
+
+	currentExactBytes, _ := json.Marshal(exactOff)
+	baselineExactBytes, _ := json.Marshal(baseline.Exact)
+	if string(currentExactBytes) != string(baselineExactBytes) {
+		t.Errorf("Exact decay OFF results do not match baseline")
 	}
 
 	// Test 2: Decay ON reordering
 	search.GlobalDecayConfig = search.DecayConfig{Enabled: true, HalfLifeDays: 14}
-	
+
 	fuzzyOn, err := search.FuzzySearch(ctx, db, nil, "collision", 10, "")
 	if err != nil {
 		t.Fatalf("fuzzy search failed: %v", err)
 	}
 
-	// Since content is identical, "Brand new document." (age 0) should win over "Mid-aged document." (age 14), 
+	// Since content is identical, "Brand new document." (age 0) should win over "Mid-aged document." (age 14),
 	// which should win over "Very old document." (age 30).
 	if len(fuzzyOn) >= 3 {
 		if fuzzyOn[0].MemoryID != 3 || fuzzyOn[1].MemoryID != 2 || fuzzyOn[2].MemoryID != 1 {

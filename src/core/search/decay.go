@@ -25,10 +25,10 @@ func LoadDecayConfig() (DecayConfig, error) {
 		HalfLifeDays: 14.0, // default half-life
 	}
 
-	decayEnv := strings.ToLower(strings.TrimSpace(os.Getenv("RRF_TIME_DECAY")))
-	if decayEnv == "on" || decayEnv == "true" || decayEnv == "1" {
+	decayEnv := strings.TrimSpace(os.Getenv("RRF_TIME_DECAY"))
+	if decayEnv == "on" {
 		config.Enabled = true
-	} else if decayEnv != "" && decayEnv != "off" && decayEnv != "false" && decayEnv != "0" {
+	} else if decayEnv != "" && decayEnv != "off" {
 		return config, fmt.Errorf("invalid value for RRF_TIME_DECAY: %q (expected 'on' or 'off')", decayEnv)
 	}
 

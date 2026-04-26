@@ -127,6 +127,14 @@ func TestLoadDecayConfig(t *testing.T) {
 		t.Errorf("expected error for invalid RRF_TIME_DECAY")
 	}
 
+	// Strict flag contract: only on/off are accepted.
+	clearEnv()
+	os.Setenv("RRF_TIME_DECAY", "true")
+	_, err = search.LoadDecayConfig()
+	if err == nil {
+		t.Errorf("expected error for true; only on/off are accepted")
+	}
+
 	// Invalid RRF_HALF_LIFE_DAYS (not a number)
 	clearEnv()
 	os.Setenv("RRF_TIME_DECAY", "on")

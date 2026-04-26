@@ -68,7 +68,7 @@ Si se omite el proyecto, la búsqueda se realiza sobre todo el corpus (comportam
 HSME soporta el decaimiento exponencial de resultados según su antigüedad para priorizar información fresca sin perder relevancia semántica.
 
 ### Configuración
-- `RRF_TIME_DECAY`: Establecer en `on` o `true` para activar el decaimiento (por defecto `off`).
+- `RRF_TIME_DECAY`: Establecer en `on` para activar el decaimiento o `off` para desactivarlo (por defecto `off`). Otros valores se rechazan al iniciar.
 - `RRF_HALF_LIFE_DAYS`: Vida media en días (por defecto `14.0`). Un documento con esta antigüedad verá su score de relevancia reducido a la mitad.
 
 ### Benchmarking
@@ -76,9 +76,13 @@ Puedes evaluar el impacto del decaimiento en tu corpus actual usando la herramie
 ```bash
 # Compilar y ejecutar contra el corpus actual
 go build -tags "sqlite_fts5 sqlite_vec" -o bench-decay ./cmd/bench-decay
-./bench-decay -db data/engram.db -half-life 14.0
+./bench-decay \
+  -db data/engram.db \
+  -eval docs/future-missions/mission-3-eval-set.yaml \
+  -baseline docs/future-missions/mission-3-baseline.json \
+  -half-life 14.0
 ```
-Los reportes se generan en `data/benchmarks/<run_id>/` e incluyen comparativas OFF vs ON tanto para búsqueda difusa como exacta.
+Los reportes se generan en `data/benchmarks/<run_id>/` e incluyen comparativas OFF vs ON, deltas de ranking, métricas por categoría y muestras de búsqueda exacta. Por defecto el benchmark usa el mismo embedder de `search_fuzzy`; `-no-vector` queda reservado para pruebas offline y no debe usarse para aceptación de misión.
 
 ### Seguridad y Rollback
 El decaimiento está desactivado por defecto. Para revertir cualquier cambio en el ranking, simplemente elimina la variable de entorno `RRF_TIME_DECAY` o establécela en `off`.
