@@ -93,7 +93,7 @@ Research conclusions are already captured in `kitty-specs/recency-fast-path-for-
 - fold the currently broken test-file fixes into this mission because they are mechanical prerequisites for a green suite;
 - update only the HSME protocol subsection of `CLAUDE.md`.
 
-No `[NEEDS CLARIFICATION]` markers remain.
+No unresolved clarification markers remain.
 
 ## Phase 1: Design & Contracts
 
