@@ -16,7 +16,8 @@ planning_base_branch: main
 merge_target_branch: main
 branch_strategy: Planning artifacts for this feature were generated on main. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into main unless the human explicitly redirects the landing branch.
 base_branch: kitty/mission-engram-legacy-cutover-and-corpus-restoration-01KQ2SJK
-created_at: '2026-04-26T02:52:52Z'
+base_commit: 458ec6df2b09c0e0859f2c80e5ab00d40f95bec7
+created_at: '2026-04-26T03:19:07.855398+00:00'
 subtasks:
 - T001
 - T002
@@ -24,7 +25,7 @@ subtasks:
 - T004
 - T005
 agent: codex
-shell_pid: 0
+shell_pid: '1573443'
 history: []
 agent_profile: implementer-ivan
 authoritative_surface: cmd/migrate-legacy/
