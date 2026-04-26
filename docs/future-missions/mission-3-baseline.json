@@ -1,0 +1,487 @@
+{
+  "schema_version": 1,
+  "measured_at": "2026-04-26T05:36:50Z",
+  "tool_under_test": "search_fuzzy",
+  "tool_version": "c81b9cff141f",
+  "total_queries": 20,
+  "corpus_snapshot": {
+    "total_memories": 1004,
+    "min_created_at": "2026-04-03 21:19:19",
+    "max_created_at": "2026-04-26 00:23:21.00930971-04:00"
+  },
+  "results": [
+    {
+      "id": "rec-01",
+      "category": "pure_recency",
+      "query": "what did we do in the last session",
+      "expected_winner_id": 994,
+      "actual_top_10_ids": [
+        902,
+        905,
+        870,
+        889,
+        888,
+        872,
+        908,
+        773,
+        617,
+        911
+      ],
+      "expected_winner_rank": null,
+      "in_top_10": false,
+      "in_top_3": false,
+      "in_top_1": false
+    },
+    {
+      "id": "rec-02",
+      "category": "pure_recency",
+      "query": "last session aibbe",
+      "expected_winner_id": 911,
+      "actual_top_10_ids": [
+        889,
+        905,
+        888,
+        611,
+        872,
+        613,
+        598,
+        870,
+        617,
+        887
+      ],
+      "expected_winner_rank": null,
+      "in_top_10": false,
+      "in_top_3": false,
+      "in_top_1": false
+    },
+    {
+      "id": "rec-03",
+      "category": "pure_recency",
+      "query": "most recent bugfix",
+      "expected_winner_id": 997,
+      "actual_top_10_ids": [
+        918,
+        948,
+        771,
+        954,
+        603,
+        924,
+        577,
+        949,
+        340,
+        605
+      ],
+      "expected_winner_rank": null,
+      "in_top_10": false,
+      "in_top_3": false,
+      "in_top_1": false
+    },
+    {
+      "id": "rec-04",
+      "category": "pure_recency",
+      "query": "latest decision about hsme",
+      "expected_winner_id": 1002,
+      "actual_top_10_ids": [
+        847,
+        849,
+        845,
+        1002,
+        842,
+        841,
+        944,
+        937,
+        942,
+        979
+      ],
+      "expected_winner_rank": 4,
+      "in_top_10": true,
+      "in_top_3": false,
+      "in_top_1": false
+    },
+    {
+      "id": "rec-05",
+      "category": "pure_recency",
+      "query": "latest architecture note",
+      "expected_winner_id": 988,
+      "actual_top_10_ids": [
+        276,
+        408,
+        928,
+        621,
+        234,
+        204,
+        986,
+        357,
+        100,
+        218
+      ],
+      "expected_winner_rank": null,
+      "in_top_10": false,
+      "in_top_3": false,
+      "in_top_1": false
+    },
+    {
+      "id": "rel-01",
+      "category": "pure_relevance",
+      "query": "hybrid search architecture RRF sqlite-vec FTS5",
+      "expected_winner_id": 7,
+      "actual_top_10_ids": [
+        7,
+        916,
+        925,
+        922,
+        976,
+        842,
+        918,
+        841,
+        959,
+        926
+      ],
+      "expected_winner_rank": 1,
+      "in_top_10": true,
+      "in_top_3": true,
+      "in_top_1": true
+    },
+    {
+      "id": "rel-02",
+      "category": "pure_relevance",
+      "query": "FTS5 sanitization for natural language queries",
+      "expected_winner_id": 918,
+      "actual_top_10_ids": [
+        683,
+        634,
+        765,
+        709,
+        182,
+        929,
+        648,
+        978,
+        406,
+        392
+      ],
+      "expected_winner_rank": null,
+      "in_top_10": false,
+      "in_top_3": false,
+      "in_top_1": false
+    },
+    {
+      "id": "rel-03",
+      "category": "pure_relevance",
+      "query": "parseExtractedKG balanced braces malformed JSON phi3.5",
+      "expected_winner_id": 918,
+      "actual_top_10_ids": [
+        918,
+        920,
+        836,
+        948,
+        949,
+        344,
+        202,
+        956,
+        954,
+        133
+      ],
+      "expected_winner_rank": 1,
+      "in_top_10": true,
+      "in_top_3": true,
+      "in_top_1": true
+    },
+    {
+      "id": "rel-04",
+      "category": "pure_relevance",
+      "query": "HSME observability foundation runtime architecture",
+      "expected_winner_id": 922,
+      "actual_top_10_ids": [
+        988,
+        926,
+        987,
+        989,
+        986,
+        983,
+        993,
+        991,
+        982,
+        575
+      ],
+      "expected_winner_rank": null,
+      "in_top_10": false,
+      "in_top_3": false,
+      "in_top_1": false
+    },
+    {
+      "id": "rel-05",
+      "category": "pure_relevance",
+      "query": "Ollama integration embeddings graph extraction proposal",
+      "expected_winner_id": 845,
+      "actual_top_10_ids": [
+        941,
+        124,
+        956,
+        845,
+        922,
+        747,
+        918,
+        46,
+        973,
+        439
+      ],
+      "expected_winner_rank": 4,
+      "in_top_10": true,
+      "in_top_3": false,
+      "in_top_1": false
+    },
+    {
+      "id": "mix-01",
+      "category": "mixed",
+      "query": "latest changes to search_exact",
+      "expected_winner_id": 978,
+      "actual_top_10_ids": [
+        925,
+        978,
+        967,
+        966,
+        924,
+        977,
+        580,
+        979,
+        960,
+        959
+      ],
+      "expected_winner_rank": 2,
+      "in_top_10": true,
+      "in_top_3": true,
+      "in_top_1": false
+    },
+    {
+      "id": "mix-02",
+      "category": "mixed",
+      "query": "recent decisions about observability",
+      "expected_winner_id": 991,
+      "actual_top_10_ids": [
+        926,
+        986,
+        991,
+        993,
+        988,
+        982,
+        983,
+        928,
+        616,
+        575
+      ],
+      "expected_winner_rank": 3,
+      "in_top_10": true,
+      "in_top_3": true,
+      "in_top_1": false
+    },
+    {
+      "id": "mix-03",
+      "category": "mixed",
+      "query": "stalled async task queue fix",
+      "expected_winner_id": 997,
+      "actual_top_10_ids": [
+        997,
+        918,
+        927,
+        954,
+        947,
+        948,
+        136,
+        926,
+        955,
+        998
+      ],
+      "expected_winner_rank": 1,
+      "in_top_10": true,
+      "in_top_3": true,
+      "in_top_1": true
+    },
+    {
+      "id": "mix-04",
+      "category": "mixed",
+      "query": "latest HSME worker remediation",
+      "expected_winner_id": 947,
+      "actual_top_10_ids": [
+        918,
+        927,
+        954,
+        947,
+        948,
+        893,
+        870,
+        926,
+        949,
+        894
+      ],
+      "expected_winner_rank": 4,
+      "in_top_10": true,
+      "in_top_3": false,
+      "in_top_1": false
+    },
+    {
+      "id": "mix-05",
+      "category": "mixed",
+      "query": "latest changes to the schema",
+      "expected_winner_id": 988,
+      "actual_top_10_ids": [
+        956,
+        928,
+        922,
+        918,
+        973,
+        218,
+        286,
+        417,
+        252,
+        294
+      ],
+      "expected_winner_rank": null,
+      "in_top_10": false,
+      "in_top_3": false,
+      "in_top_1": false
+    },
+    {
+      "id": "adv-01",
+      "category": "adversarial",
+      "query": "original HSME architecture overview",
+      "expected_winner_id": 7,
+      "actual_top_10_ids": [
+        276,
+        408,
+        234,
+        405,
+        357,
+        621,
+        347,
+        387,
+        154,
+        986
+      ],
+      "expected_winner_rank": null,
+      "in_top_10": false,
+      "in_top_3": false,
+      "in_top_1": false
+    },
+    {
+      "id": "adv-02",
+      "category": "adversarial",
+      "query": "aibbe architecture specs roadmap ui ux documentation",
+      "expected_winner_id": 234,
+      "actual_top_10_ids": [
+        367,
+        234,
+        152,
+        192,
+        423,
+        220,
+        323,
+        263,
+        803,
+        204
+      ],
+      "expected_winner_rank": 2,
+      "in_top_10": true,
+      "in_top_3": true,
+      "in_top_1": false
+    },
+    {
+      "id": "adv-03",
+      "category": "adversarial",
+      "query": "t1 base rutina daemon initialization exploration",
+      "expected_winner_id": 154,
+      "actual_top_10_ids": [
+        157,
+        154,
+        156,
+        162,
+        155,
+        166,
+        158,
+        165,
+        856,
+        194
+      ],
+      "expected_winner_rank": 2,
+      "in_top_10": true,
+      "in_top_3": true,
+      "in_top_1": false
+    },
+    {
+      "id": "adv-04",
+      "category": "adversarial",
+      "query": "frontend-erp project context sdd init",
+      "expected_winner_id": 11,
+      "actual_top_10_ids": [
+        19,
+        11,
+        24,
+        131,
+        466,
+        27,
+        23,
+        297,
+        18,
+        149
+      ],
+      "expected_winner_rank": 2,
+      "in_top_10": true,
+      "in_top_3": true,
+      "in_top_1": false
+    },
+    {
+      "id": "adv-05",
+      "category": "adversarial",
+      "query": "t2 seguridad ipc archived umask 0600 cross uid rejection",
+      "expected_winner_id": 188,
+      "actual_top_10_ids": [
+        188,
+        173,
+        183,
+        176,
+        857,
+        181,
+        168,
+        178,
+        202,
+        858
+      ],
+      "expected_winner_rank": 1,
+      "in_top_10": true,
+      "in_top_3": true,
+      "in_top_1": true
+    }
+  ],
+  "summary": {
+    "by_category": {
+      "pure_recency": {
+        "n": 5,
+        "top1_hit_rate": 0.0,
+        "top3_hit_rate": 0.0,
+        "top10_hit_rate": 0.2
+      },
+      "pure_relevance": {
+        "n": 5,
+        "top1_hit_rate": 0.4,
+        "top3_hit_rate": 0.4,
+        "top10_hit_rate": 0.6
+      },
+      "mixed": {
+        "n": 5,
+        "top1_hit_rate": 0.2,
+        "top3_hit_rate": 0.6,
+        "top10_hit_rate": 0.8
+      },
+      "adversarial": {
+        "n": 5,
+        "top1_hit_rate": 0.2,
+        "top3_hit_rate": 0.8,
+        "top10_hit_rate": 0.8
+      }
+    },
+    "overall": {
+      "top1_hit_rate": 0.2,
+      "top3_hit_rate": 0.45,
+      "top10_hit_rate": 0.6
+    }
+  }
+}

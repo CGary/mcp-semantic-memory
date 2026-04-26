@@ -1,0 +1,240 @@
+{
+  "schema_version": 1,
+  "frozen_at": "2026-04-26T05:36:50Z",
+  "total_queries": 20,
+  "corpus_snapshot": {
+    "hsme_db": "/home/gary/dev/hsme/data/engram.db",
+    "total_memories": 1004,
+    "date_range": {
+      "min_created_at": "2026-04-03 21:19:19",
+      "max_created_at": "2026-04-26 00:23:21.00930971-04:00"
+    }
+  },
+  "queries": [
+    {
+      "id": "rec-01",
+      "category": "pure_recency",
+      "query": "what did we do in the last session",
+      "expected_winner_criterion": {
+        "description": "newest active session_summary across all projects",
+        "sql": "SELECT id FROM memories WHERE source_type='session_summary' AND status='active' AND superseded_by IS NULL ORDER BY datetime(created_at) DESC, id DESC LIMIT 1",
+        "resolved_memory_id": 994
+      },
+      "notes": ""
+    },
+    {
+      "id": "rec-02",
+      "category": "pure_recency",
+      "query": "last session aibbe",
+      "expected_winner_criterion": {
+        "description": "newest active session_summary for project=aibbe",
+        "sql": "SELECT id FROM memories WHERE source_type='session_summary' AND status='active' AND superseded_by IS NULL AND project='aibbe' ORDER BY datetime(created_at) DESC, id DESC LIMIT 1",
+        "resolved_memory_id": 911
+      },
+      "notes": ""
+    },
+    {
+      "id": "rec-03",
+      "category": "pure_recency",
+      "query": "most recent bugfix",
+      "expected_winner_criterion": {
+        "description": "newest active bugfix across all projects",
+        "sql": "SELECT id FROM memories WHERE source_type='bugfix' AND status='active' AND superseded_by IS NULL ORDER BY datetime(created_at) DESC, id DESC LIMIT 1",
+        "resolved_memory_id": 997
+      },
+      "notes": ""
+    },
+    {
+      "id": "rec-04",
+      "category": "pure_recency",
+      "query": "latest decision about hsme",
+      "expected_winner_criterion": {
+        "description": "newest active decision mentioning HSME",
+        "sql": "SELECT id FROM memories WHERE source_type='decision' AND status='active' AND superseded_by IS NULL AND raw_content LIKE '%HSME%' ORDER BY datetime(created_at) DESC, id DESC LIMIT 1",
+        "resolved_memory_id": 1002
+      },
+      "notes": ""
+    },
+    {
+      "id": "rec-05",
+      "category": "pure_recency",
+      "query": "latest architecture note",
+      "expected_winner_criterion": {
+        "description": "newest active architecture memory across all projects",
+        "sql": "SELECT id FROM memories WHERE source_type='architecture' AND status='active' AND superseded_by IS NULL ORDER BY datetime(created_at) DESC, id DESC LIMIT 1",
+        "resolved_memory_id": 988
+      },
+      "notes": ""
+    },
+    {
+      "id": "rel-01",
+      "category": "pure_relevance",
+      "query": "hybrid search architecture RRF sqlite-vec FTS5",
+      "expected_winner_criterion": {
+        "description": "manual winner for the canonical HSME architecture overview",
+        "memory_id": 7,
+        "resolved_memory_id": 7
+      },
+      "notes": "Confirmed via search_fuzzy: memory 7 is the final HSME architecture summary covering RRF, sqlite-vec, FTS5, and MCP."
+    },
+    {
+      "id": "rel-02",
+      "category": "pure_relevance",
+      "query": "FTS5 sanitization for natural language queries",
+      "expected_winner_criterion": {
+        "description": "manual winner for sanitizeFTS and FTS5 operator neutralization",
+        "memory_id": 918,
+        "resolved_memory_id": 918
+      },
+      "notes": "Confirmed via search_fuzzy: memory 918 explicitly documents sanitizeFTS and quoting tokens to neutralize FTS5 operators."
+    },
+    {
+      "id": "rel-03",
+      "category": "pure_relevance",
+      "query": "parseExtractedKG balanced braces malformed JSON phi3.5",
+      "expected_winner_criterion": {
+        "description": "manual winner for tolerant KG JSON parsing in Ollama extraction",
+        "memory_id": 918,
+        "resolved_memory_id": 918
+      },
+      "notes": "Confirmed via search_fuzzy: memory 918 is the clearest single memory for parseExtractedKG, balanced-brace fallback, and phi3.5 malformed JSON handling."
+    },
+    {
+      "id": "rel-04",
+      "category": "pure_relevance",
+      "query": "HSME observability foundation runtime architecture",
+      "expected_winner_criterion": {
+        "description": "manual winner for the stabilization/remediation report that best explains observability-era HSME architecture context",
+        "memory_id": 922,
+        "resolved_memory_id": 922
+      },
+      "notes": "Confirmed via search_fuzzy: memory 922 ranks first and provides the densest architectural explanation around the post-hardening HSME stack."
+    },
+    {
+      "id": "rel-05",
+      "category": "pure_relevance",
+      "query": "Ollama integration embeddings graph extraction proposal",
+      "expected_winner_criterion": {
+        "description": "manual winner for the original Ollama integration proposal",
+        "memory_id": 845,
+        "resolved_memory_id": 845
+      },
+      "notes": "Confirmed via search_fuzzy: memory 845 is the dedicated change proposal for embeddings + graph extraction via Ollama."
+    },
+    {
+      "id": "mix-01",
+      "category": "mixed",
+      "query": "latest changes to search_exact",
+      "expected_winner_criterion": {
+        "description": "newest active bugfix mentioning search_exact",
+        "sql": "SELECT id FROM memories WHERE source_type='bugfix' AND status='active' AND superseded_by IS NULL AND raw_content LIKE '%search_exact%' ORDER BY datetime(created_at) DESC, id DESC LIMIT 1",
+        "resolved_memory_id": 978
+      },
+      "notes": "Relevance is constrained to search_exact; recency selects the newest change among those matches."
+    },
+    {
+      "id": "mix-02",
+      "category": "mixed",
+      "query": "recent decisions about observability",
+      "expected_winner_criterion": {
+        "description": "newest active decision mentioning observability",
+        "sql": "SELECT id FROM memories WHERE source_type='decision' AND status='active' AND superseded_by IS NULL AND raw_content LIKE '%observability%' ORDER BY datetime(created_at) DESC, id DESC LIMIT 1",
+        "resolved_memory_id": 991
+      },
+      "notes": "Relevance filters to observability decisions; recency picks the latest one."
+    },
+    {
+      "id": "mix-03",
+      "category": "mixed",
+      "query": "stalled async task queue fix",
+      "expected_winner_criterion": {
+        "description": "newest active bugfix about stalled async task queue recovery",
+        "sql": "SELECT id FROM memories WHERE source_type='bugfix' AND status='active' AND superseded_by IS NULL AND raw_content LIKE '%stalled async task queue%' ORDER BY datetime(created_at) DESC, id DESC LIMIT 1",
+        "resolved_memory_id": 997
+      },
+      "notes": "The correct answer should be both queue-related and the newest such fix."
+    },
+    {
+      "id": "mix-04",
+      "category": "mixed",
+      "query": "latest HSME worker remediation",
+      "expected_winner_criterion": {
+        "description": "newest active architecture note specifically about HSME worker remediation/decoupling",
+        "sql": "SELECT id FROM memories WHERE source_type='architecture' AND status='active' AND superseded_by IS NULL AND raw_content LIKE '%Worker Remediation%' ORDER BY datetime(created_at) DESC, id DESC LIMIT 1",
+        "resolved_memory_id": 947
+      },
+      "notes": "The query is relevance-constrained to worker remediation; within that slice, the newest architecture note should win."
+    },
+    {
+      "id": "mix-05",
+      "category": "mixed",
+      "query": "latest changes to the schema",
+      "expected_winner_criterion": {
+        "description": "newest active architecture/bugfix/decision mentioning schema",
+        "sql": "SELECT id FROM memories WHERE source_type IN ('architecture','bugfix','decision') AND status='active' AND superseded_by IS NULL AND raw_content LIKE '%schema%' ORDER BY datetime(created_at) DESC, id DESC LIMIT 1",
+        "resolved_memory_id": 988
+      },
+      "notes": "Relevance narrows to schema changes, recency should then dominate."
+    },
+    {
+      "id": "adv-01",
+      "category": "adversarial",
+      "query": "original HSME architecture overview",
+      "expected_winner_criterion": {
+        "description": "old but canonical HSME architecture overview",
+        "memory_id": 7,
+        "resolved_memory_id": 7,
+        "age_days_at_test_time": 2.34
+      },
+      "notes": ""
+    },
+    {
+      "id": "adv-02",
+      "category": "adversarial",
+      "query": "aibbe architecture specs roadmap ui ux documentation",
+      "expected_winner_criterion": {
+        "description": "old but canonical aibbe multi-doc architecture context",
+        "memory_id": 234,
+        "resolved_memory_id": 234,
+        "age_days_at_test_time": 20.52
+      },
+      "notes": ""
+    },
+    {
+      "id": "adv-03",
+      "category": "adversarial",
+      "query": "t1 base rutina daemon initialization exploration",
+      "expected_winner_criterion": {
+        "description": "old daemon bootstrap exploration for aibbe",
+        "memory_id": 154,
+        "resolved_memory_id": 154,
+        "age_days_at_test_time": 20.99
+      },
+      "notes": ""
+    },
+    {
+      "id": "adv-04",
+      "category": "adversarial",
+      "query": "frontend-erp project context sdd init",
+      "expected_winner_criterion": {
+        "description": "early frontend-erp project-context memory that should remain retrievable",
+        "memory_id": 11,
+        "resolved_memory_id": 11,
+        "age_days_at_test_time": 22.35
+      },
+      "notes": ""
+    },
+    {
+      "id": "adv-05",
+      "category": "adversarial",
+      "query": "t2 seguridad ipc archived umask 0600 cross uid rejection",
+      "expected_winner_criterion": {
+        "description": "old security-IPC archival memory with enduring relevance",
+        "memory_id": 188,
+        "resolved_memory_id": 188,
+        "age_days_at_test_time": 20.93
+      },
+      "notes": ""
+    }
+  ]
+}
