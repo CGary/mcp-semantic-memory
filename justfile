@@ -91,14 +91,6 @@ stop-all: stop-work stop-ops
 # Iniciar todos los procesos en segundo plano
 start-all: work-bg ops-bg
 
-# Ver progreso actual (Instantánea con diseño mejorado)
-status:
-        @./bin/hsme-cli status
-
-# Monitorear progreso en tiempo real (refresco cada 2s)
-watch-status:
-        @watch -n 2 -c "./bin/hsme-cli status"
-
 # Reencolar tareas fallidas agotadas para que el worker pueda retomarlas
 retry-failed:
         @./bin/hsme-cli admin retry-failed

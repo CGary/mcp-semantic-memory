@@ -89,14 +89,30 @@ El decaimiento está desactivado por defecto. Para revertir cualquier cambio en 
 
 ## 📂 Operación y Mantenimiento
 
-### Comandos de Just
-- `just serve`: Inicia el servidor MCP.
-- `just work-bg`: Lanza el worker semántico en segundo plano (GPU acelerado).
-- `just ops-loop`: Corre el runner de mantenimiento y rollups de métricas.
+### Gestión de Procesos en Segundo Plano
+HSME permite ejecutar sus componentes de enriquecimiento y mantenimiento en segundo plano para no bloquear la terminal:
+
+*   **`just start-all`**: Lanza el worker y el runner de ops en background.
+*   **`just stop-all`**: Detiene todos los procesos de HSME en segundo plano de forma segura.
+*   **`just work-bg` / `just stop-work`**: Control individual del worker de grafos/embeddings.
+*   **`just ops-bg` / `just stop-ops`**: Control individual del runner de observabilidad.
+
+Los logs de estos procesos se almacenan en el directorio `logs/` (`logs/worker.log` y `logs/ops.log`).
+
+### Monitoreo y Diagnóstico
+Para supervisar el sistema, se utiliza directamente el **CLI Unificado** (`hsme-cli`), que proporciona las herramientas principales de diagnóstico:
+
+*   **`hsme-cli status`**: Muestra una instantánea de la salud del sistema, incluyendo el estado de la cola de tareas, la cobertura de vectores y el progreso del grafo de conocimiento.
+*   **`watch -n 2 -c "hsme-cli status"`**: Permite un monitoreo en tiempo real del estado del sistema.
+*   **`hsme-cli admin retry-failed`**: Reencola automáticamente tareas que fallaron o agotaron su tiempo de ejecución.
+
+### Comandos de Utilidad
+- `just serve`: Inicia el servidor MCP (comunicación stdio).
+- `just install`: Compila e instala todos los binarios (`hsme`, `hsme-worker`, `hsme-ops`, `hsme-cli`) en `~/go/bin`.
+- `just cli-install`: Instala únicamente el CLI.
 - `just migrate [full|delta]`: Ejecuta la migración desde Engram legado.
-- `just verify-cutover`: Ejecuta el script de validación de integridad post-migración.
-- `just status`: Instantánea de salud del sistema, progreso de la cola y estado del grafo.
 - `just backup/restore`: Gestión de snapshots atómicos compatibles con WAL.
+- `just clean`: Elimina binarios locales y limpia los archivos de log.
 
 ## 🔌 Configuración del Cliente MCP
 
