@@ -7,11 +7,11 @@
 ## Subtask Index
 | ID | Description | WP | Parallel |
 |---|---|---|---|
-| T001 | Create the `cmd/migrate-legacy` CLI entrypoint, mode parsing, and phase orchestration skeleton | WP01 | |
-| T002 | Implement preflight validation and hot-backup invocation with fail-fast error handling | WP01 | |
-| T003 | Add run-report generation (`report.json`, `report.txt`, TSV outputs) and stable run directory creation | WP01 | [P] |
-| T004 | Extend SQLite initialization with the nullable `memories.project` column and project index, idempotently | WP01 | |
-| T005 | Add migrator foundation tests for preflight, schema migration, and report persistence | WP01 | |
+| T001 | Create the `cmd/migrate-legacy` CLI entrypoint, mode parsing, and phase orchestration skeleton | WP01 | | [D] |
+| T002 | Implement preflight validation and hot-backup invocation with fail-fast error handling | WP01 | | [D] |
+| T003 | Add run-report generation (`report.json`, `report.txt`, TSV outputs) and stable run directory creation | WP01 | [D] |
+| T004 | Extend SQLite initialization with the nullable `memories.project` column and project index, idempotently | WP01 | | [D] |
+| T005 | Add migrator foundation tests for preflight, schema migration, and report persistence | WP01 | | [D] |
 | T006 | Implement wrapper parsing plus legacy-observation loading/indexing for exact content matches | WP02 | |
 | T007 | Implement the matched-memory backfill transaction with threshold enforcement and mapping capture | WP02 | |
 | T008 | Implement born-in-HSME retagging and project backfill from wrapper metadata | WP02 | |
@@ -35,11 +35,11 @@
 **Dependencies**: None
 **Independent test**: A temporary HSME DB can run migrator preflight/schema/report steps repeatedly, with backup failure aborting cleanly and the `project` column/index appearing exactly once.
 **Included Subtasks**:
-- [ ] T001 Create the `cmd/migrate-legacy` CLI entrypoint, mode parsing, and phase orchestration skeleton (WP01)
-- [ ] T002 Implement preflight validation and hot-backup invocation with fail-fast error handling (WP01)
-- [ ] T003 Add run-report generation (`report.json`, `report.txt`, TSV outputs) and stable run directory creation (WP01)
-- [ ] T004 Extend SQLite initialization with the nullable `memories.project` column and project index, idempotently (WP01)
-- [ ] T005 Add migrator foundation tests for preflight, schema migration, and report persistence (WP01)
+- [x] T001 Create the `cmd/migrate-legacy` CLI entrypoint, mode parsing, and phase orchestration skeleton (WP01)
+- [x] T002 Implement preflight validation and hot-backup invocation with fail-fast error handling (WP01)
+- [x] T003 Add run-report generation (`report.json`, `report.txt`, TSV outputs) and stable run directory creation (WP01)
+- [x] T004 Extend SQLite initialization with the nullable `memories.project` column and project index, idempotently (WP01)
+- [x] T005 Add migrator foundation tests for preflight, schema migration, and report persistence (WP01)
 **Implementation Sketch**:
 - Stand up the CLI/config/report plumbing first so later phases can log deterministically.
 - Add schema migration helpers in the storage layer before wiring phase execution.
