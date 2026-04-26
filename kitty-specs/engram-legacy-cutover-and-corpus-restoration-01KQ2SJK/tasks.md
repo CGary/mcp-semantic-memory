@@ -12,11 +12,11 @@
 | T003 | Add run-report generation (`report.json`, `report.txt`, TSV outputs) and stable run directory creation | WP01 | [D] |
 | T004 | Extend SQLite initialization with the nullable `memories.project` column and project index, idempotently | WP01 | | [D] |
 | T005 | Add migrator foundation tests for preflight, schema migration, and report persistence | WP01 | | [D] |
-| T006 | Implement wrapper parsing plus legacy-observation loading/indexing for exact content matches | WP02 | |
-| T007 | Implement the matched-memory backfill transaction with threshold enforcement and mapping capture | WP02 | |
-| T008 | Implement born-in-HSME retagging and project backfill from wrapper metadata | WP02 | |
-| T009 | Implement malformed-row cleanup and per-phase idempotent resume guards | WP02 | |
-| T010 | Add matcher/backfill tests covering matched, unmatched, malformed, and rerun scenarios | WP02 | |
+| T006 | Implement wrapper parsing plus legacy-observation loading/indexing for exact content matches | WP02 | | [D] |
+| T007 | Implement the matched-memory backfill transaction with threshold enforcement and mapping capture | WP02 | | [D] |
+| T008 | Implement born-in-HSME retagging and project backfill from wrapper metadata | WP02 | | [D] |
+| T009 | Implement malformed-row cleanup and per-phase idempotent resume guards | WP02 | | [D] |
+| T010 | Add matcher/backfill tests covering matched, unmatched, malformed, and rerun scenarios | WP02 | | [D] |
 | T011 | Implement orphan discovery and wrapper reconstruction for legacy-only observations | WP03 | |
 | T012 | Ingest orphan observations through `indexer.StoreContext`, then restore legacy metadata and support `--mode=delta` | WP03 | |
 | T013 | Persist and reuse legacy snapshots so delta mode can ingest only post-cutover writes | WP03 | |
@@ -56,11 +56,11 @@
 **Dependencies**: WP01
 **Independent test**: A fixture corpus with wrapped migrated rows and a read-only legacy DB restores matched metadata, retags fabricated summaries, deletes the garbage row, and produces zero extra mutations on rerun.
 **Included Subtasks**:
-- [ ] T006 Implement wrapper parsing plus legacy-observation loading/indexing for exact content matches (WP02)
-- [ ] T007 Implement the matched-memory backfill transaction with threshold enforcement and mapping capture (WP02)
-- [ ] T008 Implement born-in-HSME retagging and project backfill from wrapper metadata (WP02)
-- [ ] T009 Implement malformed-row cleanup and per-phase idempotent resume guards (WP02)
-- [ ] T010 Add matcher/backfill tests covering matched, unmatched, malformed, and rerun scenarios (WP02)
+- [x] T006 Implement wrapper parsing plus legacy-observation loading/indexing for exact content matches (WP02)
+- [x] T007 Implement the matched-memory backfill transaction with threshold enforcement and mapping capture (WP02)
+- [x] T008 Implement born-in-HSME retagging and project backfill from wrapper metadata (WP02)
+- [x] T009 Implement malformed-row cleanup and per-phase idempotent resume guards (WP02)
+- [x] T010 Add matcher/backfill tests covering matched, unmatched, malformed, and rerun scenarios (WP02)
 **Implementation Sketch**:
 - Build the wrapper parser and exact-match index first.
 - Execute phase 3 in a single transaction that only mutates metadata columns.
