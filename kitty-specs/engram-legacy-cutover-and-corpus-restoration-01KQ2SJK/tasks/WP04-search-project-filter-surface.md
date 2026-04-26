@@ -16,8 +16,8 @@ subtasks:
 - T015
 - T016
 - T017
-agent: codex
-shell_pid: 0
+agent: "gemini:1.5-pro:architect:implementer"
+shell_pid: "1589202"
 history: []
 agent_profile: implementer-ivan
 authoritative_surface: src/core/search/
@@ -100,3 +100,7 @@ Verify that:
 - omitted `project` is a no-op
 - both fuzzy and exact paths enforce the same filter semantics
 - no unrelated MCP contracts changed
+
+## Activity Log
+
+- 2026-04-26T03:29:48Z – gemini:1.5-pro:architect:implementer – shell_pid=1589202 – Started implementation via action command
