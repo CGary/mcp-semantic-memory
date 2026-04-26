@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -9,44 +10,20 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hsme/core/src/core/inference/ollama"
+	"github.com/hsme/core/src/bootstrap"
 	"github.com/hsme/core/src/core/worker"
 	"github.com/hsme/core/src/observability"
-	"github.com/hsme/core/src/storage/sqlite"
 )
 
 func main() {
-	dbPath := os.Getenv("SQLITE_DB_PATH")
-	if dbPath == "" {
-		dbPath = "data/engram.db"
-	}
-
-	db, err := sqlite.InitDB(dbPath)
+	cfg := bootstrap.LoadFromEnv()
+	flag.Parse()
+	cfg.ApplyFlagOverrides(flag.CommandLine)
+	db, embedder, extractor, err := bootstrap.OpenWithWorker(cfg)
 	if err != nil {
-		log.Fatalf("Error inicializando DB: %v", err)
+		log.Fatalf("Bootstrap failed: %v", err)
 	}
 	defer db.Close()
-
-	ollamaHost := os.Getenv("OLLAMA_HOST")
-	embedModel := os.Getenv("EMBEDDING_MODEL")
-	if embedModel == "" {
-		embedModel = "nomic-embed-text"
-	}
-	extractModel := os.Getenv("EXTRACTION_MODEL")
-	if extractModel == "" {
-		extractModel = "phi3.5"
-	}
-
-	client := ollama.NewClient(ollamaHost)
-	embedder := ollama.NewEmbedder(client, embedModel, 768)
-	extractor := ollama.NewExtractor(client, extractModel)
-
-	// Spec §4.2 / §11.2: el worker NO debe arrancar si el embedder activo
-	// difiere del persistido. Si lo hace, insertaría vectores de dimensión
-	// incompatible y cada tarea fallaría con un error opaco.
-	if err := sqlite.ValidateEmbeddingConfig(db, embedder); err != nil {
-		log.Fatalf("Config de embedding inválida: %v", err)
-	}
 
 	obsCfg := observability.LoadConfigFromEnv()
 	recorder := observability.NewSQLiteRecorder(db, obsCfg)
@@ -54,8 +31,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	fmt.Printf("Worker HSME independiente iniciado (DB: %s)\n", dbPath)
-
+	fmt.Printf("Worker HSME independiente iniciado (DB: %s)\n", cfg.DBPath)
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 

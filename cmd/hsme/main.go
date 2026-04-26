@@ -4,19 +4,18 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/hsme/core/src/bootstrap"
 	"github.com/hsme/core/src/core/indexer"
-	"github.com/hsme/core/src/core/inference/ollama"
 	"github.com/hsme/core/src/core/search"
 	"github.com/hsme/core/src/mcp"
 	"github.com/hsme/core/src/observability"
-	"github.com/hsme/core/src/storage/sqlite"
 )
-
 func wrapFuzzySearchResults(results []search.MemorySearchResult) map[string]interface{} {
         if results == nil {
                 results = []search.MemorySearchResult{}
@@ -66,50 +65,20 @@ func handleStoreContext(db *sql.DB, params json.RawMessage) (interface{}, error)
 }
 
 func main() {
-	dbPath := os.Getenv("SQLITE_DB_PATH")
-	if dbPath == "" {
-		dbPath = "data/engram.db"
-	}
-
-	fmt.Fprintf(os.Stderr, "HSME: Usando base de datos: %s\n", dbPath)
-
-	db, err := sqlite.InitDB(dbPath)
+	cfg := bootstrap.LoadFromEnv()
+	flag.Parse()
+	cfg.ApplyFlagOverrides(flag.CommandLine)
+	db, embedder, err := bootstrap.OpenWithEmbedder(cfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error inicializando DB: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Bootstrap failed: %v\n", err)
 		os.Exit(1)
 	}
 	defer db.Close()
-
-	ollamaHost := os.Getenv("OLLAMA_HOST")
-	embedModel := os.Getenv("EMBEDDING_MODEL")
-	if embedModel == "" {
-		embedModel = "nomic-embed-text"
-	}
-
-	client := ollama.NewClient(ollamaHost)
-	embedder := ollama.NewEmbedder(client, embedModel, 768)
-
-	// Spec §4.2: validar que el embedder activo coincide con la config persistida.
-	// Si no hay config (primer arranque) la sembramos; si hay y no coincide,
-	// rechazamos el startup con un mensaje claro en vez de dejar que el worker
-	// falle chunk por chunk más tarde.
-	if err := sqlite.ValidateEmbeddingConfig(db, embedder); err != nil {
-	        fmt.Fprintf(os.Stderr, "Config de embedding inválida: %v\n", err)
-	        os.Exit(1)
-	}
-
-	decayCfg, err := search.LoadDecayConfig()
-	if err != nil {
-	        fmt.Fprintf(os.Stderr, "Config de decay inválida: %v\n", err)
-	        os.Exit(1)
-	}
-	search.GlobalDecayConfig = decayCfg
 
 	srv := mcp.NewServer()
 	obsCfg := observability.LoadConfigFromEnv()
 	recorder := observability.NewSQLiteRecorder(db, obsCfg)
 	srv.SetRecorder(recorder)
-
 	// Registro de herramienta: recall_recent_session
 	srv.RegisterTool("recall_recent_session", "Retrieve recent session summaries in chronological order",
 	        map[string]interface{}{

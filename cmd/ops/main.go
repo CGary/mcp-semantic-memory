@@ -2,32 +2,31 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"os"
 	"time"
 
+	"github.com/hsme/core/src/bootstrap"
 	"github.com/hsme/core/src/observability"
-	"github.com/hsme/core/src/storage/sqlite"
 )
-
 func main() {
-	dbPath := os.Getenv("SQLITE_DB_PATH")
-	if dbPath == "" {
-		dbPath = "data/engram.db"
-	}
-	db, err := sqlite.InitDB(dbPath)
+	bCfg := bootstrap.LoadFromEnv()
+	flag.Parse()
+	bCfg.ApplyFlagOverrides(flag.CommandLine)
+	db, err := bootstrap.OpenDB(bCfg)
 	if err != nil {
-		log.Fatalf("Error inicializando DB: %v", err)
+		log.Fatalf("Bootstrap failed: %v", err)
 	}
 	defer db.Close()
 
-	cfg := observability.LoadConfigFromEnv()
-	recorder := observability.NewSQLiteRecorder(db, cfg)
+	obsCfg := observability.LoadConfigFromEnv()
+	recorder := observability.NewSQLiteRecorder(db, obsCfg)
 	ctx := context.Background()
 	mode := "once"
-	if len(os.Args) > 1 {
-		mode = os.Args[1]
+	if flag.NArg() > 0 {
+		mode = flag.Arg(0)
 	}
 
 	switch mode {
@@ -38,7 +37,7 @@ func main() {
 	case "loop":
 		for {
 			runOnce(ctx, recorder)
-			time.Sleep(cfg.FlushInterval)
+			time.Sleep(obsCfg.FlushInterval)
 		}
 	default:
 		fmt.Fprintf(os.Stderr, "uso: hsme-ops [once|summary|loop]\n")

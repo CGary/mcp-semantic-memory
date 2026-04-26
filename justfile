@@ -19,6 +19,11 @@ build:
         go build -tags "{{GO_TAGS}}" -o migrate-legacy ./cmd/migrate-legacy
         @echo "✅ Binarios compilados en la raíz."
 
+# Build hsme-cli binary
+cli-build:
+        @mkdir -p bin
+        go build -tags "{{GO_TAGS}}" -o bin/hsme-cli ./cmd/cli
+
 # Ejecutar la migración de legado
 migrate mode="full":
         ./migrate-legacy --mode={{mode}}
@@ -32,77 +37,59 @@ test:
         go test -v -tags "{{GO_TAGS}}" ./...
 
 # Compilar e instalar binarios de forma global
-install:
+install: cli-install
         @mkdir -p {{INSTALL_PATH}}
         go build -tags "{{GO_TAGS}}" -o {{INSTALL_PATH}}/hsme ./cmd/hsme
         go build -tags "{{GO_TAGS}}" -o {{INSTALL_PATH}}/hsme-worker ./cmd/worker
         go build -tags "{{GO_TAGS}}" -o {{INSTALL_PATH}}/hsme-ops ./cmd/ops
-        @tmp_hsme="{{PROJECT_ROOT}}/.hsme.tmp" && cp {{INSTALL_PATH}}/hsme "$$tmp_hsme" && mv -f "$$tmp_hsme" {{PROJECT_ROOT}}/hsme
-        @tmp_worker="{{PROJECT_ROOT}}/.hsme-worker.tmp" && cp {{INSTALL_PATH}}/hsme-worker "$$tmp_worker" && mv -f "$$tmp_worker" {{PROJECT_ROOT}}/hsme-worker
-        @tmp_ops="{{PROJECT_ROOT}}/.hsme-ops.tmp" && cp {{INSTALL_PATH}}/hsme-ops "$$tmp_ops" && mv -f "$$tmp_ops" {{PROJECT_ROOT}}/hsme-ops
-        @echo "✅ Binarios instalados en {{INSTALL_PATH}} y copiados a la raíz."
+        @echo "✅ Binarios instalados en {{INSTALL_PATH}}."
+
+# Install hsme-cli
+cli-install: cli-build
+        @mkdir -p {{INSTALL_PATH}}
+        @if [ -f bin/hsme-cli ]; then cp bin/hsme-cli {{INSTALL_PATH}}/hsme-cli && echo "✅ hsme-cli instalado en {{INSTALL_PATH}}"; else echo "⚠️ hsme-cli no encontrado (cmd/cli puede no existir aún)"; fi
+
 # Ejecutar el servidor MCP
 serve:
-	./hsme
+        ./hsme
 
 # Ejecutar el worker de grafos
 work:
-	./hsme-worker
+        ./hsme-worker
 
 # Lanzar el worker en segundo plano
 work-bg:
-	@nohup ./hsme-worker > worker_new.log 2>&1 &
-	@echo "🚀 Worker lanzado en segundo plano (tail -f worker_new.log)"
+        @nohup ./hsme-worker > worker_new.log 2>&1 &
+        @echo "🚀 Worker lanzado en segundo plano (tail -f worker_new.log)"
 
 # Ejecutar el runner de observabilidad/ops
 ops:
-	./hsme-ops once
+        ./hsme-ops once
 
 # Lanzar ops en modo loop
 ops-loop:
-	./hsme-ops loop
+        ./hsme-ops loop
 
 # Ver progreso actual (Instantánea con diseño mejorado)
 status:
-	@./scripts/status.sh
+        @./bin/hsme-cli status
 
 # Monitorear progreso en tiempo real (refresco cada 2s)
 watch-status:
-	@watch -n 2 -c "./scripts/status.sh"
+        @watch -n 2 -c "./bin/hsme-cli status"
 
 # Reencolar tareas fallidas agotadas para que el worker pueda retomarlas
 retry-failed:
-	@TO_RETRY=$(sqlite3 {{SQLITE_DB_PATH}} "SELECT COUNT(*) FROM async_tasks WHERE status = 'failed' OR attempt_count >= 5;"); \
-	if [ "$TO_RETRY" = "0" ]; then \
-		echo "ℹ️ No hay tareas fallidas/bloqueadas para reintentar."; \
-		exit 0; \
-	fi; \
-	sqlite3 {{SQLITE_DB_PATH}} " \
-	UPDATE async_tasks \
-	SET status = 'pending', \
-	    attempt_count = 0, \
-	    leased_until = NULL, \
-	    last_error = NULL, \
-	    updated_at = datetime('now') \
-	WHERE status = 'failed' OR attempt_count >= 5;"; \
-	echo "🔁 Tareas reencoladas: $TO_RETRY"; \
-	sqlite3 {{SQLITE_DB_PATH}} "SELECT printf('Estado actual: pending=%d | failed=%d', (SELECT COUNT(*) FROM async_tasks WHERE status = 'pending'), (SELECT COUNT(*) FROM async_tasks WHERE status = 'failed'));"
+        @./bin/hsme-cli admin retry-failed
 
 # Realizar un backup ATÓMICO (Compatible con WAL)
 backup:
-	@mkdir -p {{BACKUP_DIR}}
-	@sqlite3 {{SQLITE_DB_PATH}} ".backup '{{BACKUP_DIR}}/engram_$(date +%Y%m%d_%H%M%S).db'"
-	@echo "✅ Backup guardado en {{BACKUP_DIR}}/"
+        @./bin/hsme-cli admin backup
 
 # Restaurar base de datos
 restore:
-	@LATEST=$(ls -t {{BACKUP_DIR}}/engram_*.db 2>/dev/null | head -1); \
-	if [ -z "$$LATEST" ]; then echo "❌ No hay backups"; exit 1; fi; \
-	sqlite3 $$LATEST "PRAGMA integrity_check;" | grep -q "ok" || (echo "❌ Backup corrupto"; exit 1); \
-	rm -f {{SQLITE_DB_PATH}}-wal {{SQLITE_DB_PATH}}-shm; \
-	cp "$$LATEST" {{SQLITE_DB_PATH}}; \
-	echo "✅ Restaurado en {{SQLITE_DB_PATH}}"
+        @./bin/hsme-cli admin restore --latest
 
 # Limpiar binarios locales
 clean:
-	rm -f hsme hsme-worker hsme-ops worker_new.log
+        rm -f hsme hsme-worker hsme-ops hsme-cli worker_new.log
