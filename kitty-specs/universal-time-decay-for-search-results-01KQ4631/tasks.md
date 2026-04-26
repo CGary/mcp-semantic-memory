@@ -6,9 +6,9 @@
 ## Subtask Index
 | ID | Description | WP | Parallel |
 |---|---|---|---|
-| T001 | Implement the shared decay math primitive and age helper in `src/core/search/decay.go` | WP01 | |
-| T002 | Load and validate `RRF_TIME_DECAY` / `RRF_HALF_LIFE_DAYS` at server startup | WP01 | |
-| T003 | Add focused unit tests for decay math, future timestamp clamping, and invalid config values | WP01 | |
+| T001 | Implement the shared decay math primitive and age helper in `src/core/search/decay.go` | WP01 | | [D] |
+| T002 | Load and validate `RRF_TIME_DECAY` / `RRF_HALF_LIFE_DAYS` at server startup | WP01 | | [D] |
+| T003 | Add focused unit tests for decay math, future timestamp clamping, and invalid config values | WP01 | | [D] |
 | T004 | Extend fuzzy-search chunk hydration to fetch `memories.created_at` and preserve the decay-off fast path | WP02 | |
 | T005 | Apply the decay factor inside fuzzy chunk scoring before per-memory aggregation | WP02 | |
 | T006 | Add decay-aware exact-search ordering for both FTS5 BM25 rows and substring fallback rows | WP02 | |
@@ -24,9 +24,9 @@
 **Prompt**: `tasks/WP01-decay-primitive-startup-config.md` (~260 lines)
 **Dependencies**: None
 **Included Subtasks**:
-- [ ] T001 Implement the shared decay math primitive and age helper in `src/core/search/decay.go` (WP01)
-- [ ] T002 Load and validate `RRF_TIME_DECAY` / `RRF_HALF_LIFE_DAYS` at server startup (WP01)
-- [ ] T003 Add focused unit tests for decay math, future timestamp clamping, and invalid config values (WP01)
+- [x] T001 Implement the shared decay math primitive and age helper in `src/core/search/decay.go` (WP01)
+- [x] T002 Load and validate `RRF_TIME_DECAY` / `RRF_HALF_LIFE_DAYS` at server startup (WP01)
+- [x] T003 Add focused unit tests for decay math, future timestamp clamping, and invalid config values (WP01)
 
 ## WP02: Search Ranking Integration
 **Goal**: Apply the shared decay primitive to both search surfaces without breaking the byte-identical decay-off path.
