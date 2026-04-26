@@ -32,6 +32,9 @@ requirement_refs:
 - FR-051
 - FR-052
 - FR-053
+- FR-080
+- FR-081
+- FR-082
 planning_base_branch: main
 merge_target_branch: main
 branch_strategy: 'Current branch at workflow start: main. Planning/base branch for this feature: main. Completed changes must merge into main.'
