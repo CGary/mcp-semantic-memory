@@ -13,7 +13,7 @@ requirement_refs:
 - FR-036
 planning_base_branch: main
 merge_target_branch: main
-branch_strategy: 'Current branch at workflow start: main. Planning/base branch for this feature: main. Completed changes must merge into main.'
+branch_strategy: Planning artifacts for this feature were generated on main. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into main unless the human explicitly redirects the landing branch.
 subtasks:
 - T020
 - T021
@@ -29,10 +29,12 @@ authoritative_surface: src/core/admin/
 execution_mode: code_change
 model: ''
 owned_files:
-- src/core/admin/
-- cmd/cli/admin.go
+- src/core/admin/retry.go
+- src/core/admin/backup.go
+- src/core/admin/restore.go
+- src/core/admin/admin_test.go
 role: ''
-tags: []
+---
 ---
 
 ## ⚡ Do This First: Load Agent Profile
