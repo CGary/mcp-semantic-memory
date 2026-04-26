@@ -90,3 +90,7 @@ Follow the existing Go testing style in this repository. Add or update focused t
 - `cmd/hsme/main.go` fails fast on invalid decay config.
 - Unit tests cover the math and config edge cases.
 - No search-ranking code is modified yet in this WP.
+
+## Activity Log
+
+- 2026-04-26T06:31:29Z – codex – shell_pid=1828909 – Ready for review
