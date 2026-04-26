@@ -37,9 +37,9 @@
 | T024 | Refactor `justfile` status/backup/restore/retry-failed to one-line wrappers or remove | WP05 |  | [D] |
 | T025 | Remove `scripts/status.sh` after parity verification | WP05 |  | [D] |
 | T026 | Remove `ideas/cli-tool.md` after spec/plan supersede | WP05 |  | [D] |
-| T027 | Run full test suite (`just test`) and verify zero regressions | WP06 |  |
-| T028 | Verify restore refuses corrupt backup (100% of cases) | WP06 |  |
-| T029 | Verify operator daily ops loop works end-to-end without bash | WP06 |  |
+| T027 | Run full test suite (`just test`) and verify zero regressions | WP06 |  | [D] |
+| T028 | Verify restore refuses corrupt backup (100% of cases) | WP06 |  | [D] |
+| T029 | Verify operator daily ops loop works end-to-end without bash | WP06 |  | [D] |
 
 ---
 
@@ -260,9 +260,9 @@ T009, T010, T011 are independently implementable (different files, no shared sta
 
 ### Included subtasks
 
-- [ ] T027 Run full test suite (`just test`) and verify zero regressions
-- [ ] T028 Verify restore refuses corrupt backup (100% of cases)
-- [ ] T029 Verify operator daily ops loop works end-to-end without bash
+- [x] T027 Run full test suite (`just test`) and verify zero regressions
+- [x] T028 Verify restore refuses corrupt backup (100% of cases)
+- [x] T029 Verify operator daily ops loop works end-to-end without bash
 
 ### Implementation sketch
 
