@@ -25,8 +25,8 @@ subtasks:
 - T008
 - T009
 - T010
-agent: "codex"
-shell_pid: ""
+agent: "gemini:1.5-pro:architect:implementer"
+shell_pid: "1839836"
 history: []
 agent_profile: implementer-ivan
 authoritative_surface: cmd/bench-decay/
@@ -92,3 +92,7 @@ Treat the frozen eval set and baseline files as read-only inputs. The harness ma
 - A run writes JSON + Markdown reports under `data/benchmarks/<run_id>/`.
 - At least 5 exact-search samples are included.
 - Smoke coverage exists for the basic CLI/report path.
+
+## Activity Log
+
+- 2026-04-26T06:36:02Z – gemini:1.5-pro:architect:implementer – shell_pid=1839836 – Started implementation via action command
