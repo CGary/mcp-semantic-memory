@@ -11,14 +11,14 @@
 
 | ID | Description | WP | Parallel |
 |----|-------------|----|----------|
-| T001 | Create `src/bootstrap/bootstrap.go` with `OpenDB` and `OpenWithEmbedder` functions | WP01 |  |
-| T002 | Create `src/bootstrap/config.go` with `Config` struct and `LoadFromEnv()` | WP01 |  |
-| T003 | Move decay config loading into `OpenDB` | WP01 |  |
-| T004 | Create `src/bootstrap/bootstrap_test.go` with init verification tests | WP01 |  |
-| T005 | Wire `cmd/hsme/main.go` to use `bootstrap.OpenWithEmbedder` | WP01 |  |
-| T006 | Wire `cmd/worker/main.go` to use `bootstrap.OpenWithEmbedder` | WP01 |  |
-| T007 | Wire `cmd/ops/main.go` to use bootstrap (DB-only or with embedder, TBD per WP) | WP01 |  |
-| T008 | Add `cli-build` and `cli-install` justfile targets | WP01 |  |
+| T001 | Create `src/bootstrap/bootstrap.go` with `OpenDB` and `OpenWithEmbedder` functions | WP01 |  | [D] |
+| T002 | Create `src/bootstrap/config.go` with `Config` struct and `LoadFromEnv()` | WP01 |  | [D] |
+| T003 | Move decay config loading into `OpenDB` | WP01 |  | [D] |
+| T004 | Create `src/bootstrap/bootstrap_test.go` with init verification tests | WP01 |  | [D] |
+| T005 | Wire `cmd/hsme/main.go` to use `bootstrap.OpenWithEmbedder` | WP01 |  | [D] |
+| T006 | Wire `cmd/worker/main.go` to use `bootstrap.OpenWithEmbedder` | WP01 |  | [D] |
+| T007 | Wire `cmd/ops/main.go` to use bootstrap (DB-only or with embedder, TBD per WP) | WP01 |  | [D] |
+| T008 | Add `cli-build` and `cli-install` justfile targets | WP01 |  | [D] |
 | T009 | Create `cmd/cli/output.go` — TTY detection, text/JSON formatting, ANSI colors | WP02 | [P] |
 | T010 | Create `cmd/cli/flags.go` — shared flag definitions (--db, --ollama-host, --embedding-model, --format) | WP02 | [P] |
 | T011 | Create `cmd/cli/help.go` — top-level help and per-subcommand help | WP02 | [P] |
@@ -53,14 +53,14 @@
 
 ### Included subtasks
 
-- [ ] T001 Create `src/bootstrap/bootstrap.go` with `OpenDB` and `OpenWithEmbedder` functions
-- [ ] T002 Create `src/bootstrap/config.go` with `Config` struct and `LoadFromEnv()`
-- [ ] T003 Move decay config loading into `OpenDB`
-- [ ] T004 Create `src/bootstrap/bootstrap_test.go` with init verification tests
-- [ ] T005 Wire `cmd/hsme/main.go` to use `bootstrap.OpenWithEmbedder`
-- [ ] T006 Wire `cmd/worker/main.go` to use `bootstrap.OpenWithEmbedder`
-- [ ] T007 Wire `cmd/ops/main.go` to use bootstrap (DB-only or with embedder, TBD per WP)
-- [ ] T008 Add `cli-build` and `cli-install` justfile targets
+- [x] T001 Create `src/bootstrap/bootstrap.go` with `OpenDB` and `OpenWithEmbedder` functions
+- [x] T002 Create `src/bootstrap/config.go` with `Config` struct and `LoadFromEnv()`
+- [x] T003 Move decay config loading into `OpenDB`
+- [x] T004 Create `src/bootstrap/bootstrap_test.go` with init verification tests
+- [x] T005 Wire `cmd/hsme/main.go` to use `bootstrap.OpenWithEmbedder`
+- [x] T006 Wire `cmd/worker/main.go` to use `bootstrap.OpenWithEmbedder`
+- [x] T007 Wire `cmd/ops/main.go` to use bootstrap (DB-only or with embedder, TBD per WP)
+- [x] T008 Add `cli-build` and `cli-install` justfile targets
 
 ### Implementation sketch
 
