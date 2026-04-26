@@ -19,7 +19,8 @@ subtasks:
 - T021
 - T022
 - T023
-agent: ''
+agent: "gemini:o3:implementer:implementer"
+shell_pid: "2104662"
 history:
 - date: '2026-04-26T16:47:42Z'
   action: tasks generated
@@ -341,3 +342,7 @@ type RestoreResult struct {
 **Risk — Cross-device rename**: On POSIX, `os.Rename` is atomic within the same filesystem. Since we create the temp in the same dir as the target, this is guaranteed atomic. But if somehow the rename fails, the error message should be clear.
 
 **Reviewer**: After WP04, run `go test ./src/core/admin/... -v` and verify each test case. Check that corrupt backup is rejected (exit 2) and missing backup is rejected (exit 2).
+
+## Activity Log
+
+- 2026-04-26T18:13:16Z – gemini:o3:implementer:implementer – shell_pid=2104662 – Started implementation via action command
