@@ -27,8 +27,8 @@ subtasks:
 - T008
 - T009
 - T010
-agent: codex
-shell_pid: 0
+agent: "gemini:1.5-pro:architect:implementer"
+shell_pid: "1579799"
 history: []
 agent_profile: implementer-ivan
 authoritative_surface: cmd/migrate-legacy/
@@ -164,3 +164,7 @@ Verify that:
 - born-in-HSME retagging is not inferred from vague heuristics
 - cleanup relies on existing cascades/triggers rather than bespoke SQL fan-out
 - rerunning the phase yields no duplicate work
+
+## Activity Log
+
+- 2026-04-26T03:23:26Z – gemini:1.5-pro:architect:implementer – shell_pid=1579799 – Started implementation via action command
