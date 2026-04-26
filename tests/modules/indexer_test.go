@@ -77,7 +77,7 @@ func TestStoreContext(t *testing.T) {
 	content := "Unique content for test"
 	sourceType := "test"
 
-	id, err := indexer.StoreContext(db, content, sourceType, nil, false)
+	id, err := indexer.StoreContext(db, content, sourceType, "", nil, false)
 	if err != nil {
 		t.Fatalf("StoreContext failed: %v", err)
 	}
@@ -87,7 +87,7 @@ func TestStoreContext(t *testing.T) {
 	}
 
 	// Test deduplication
-	id2, err := indexer.StoreContext(db, content, sourceType, nil, false)
+	id2, err := indexer.StoreContext(db, content, sourceType, "", nil, false)
 	if err != nil {
 		t.Fatalf("StoreContext failed on duplicate: %v", err)
 	}
@@ -96,13 +96,13 @@ func TestStoreContext(t *testing.T) {
 	}
 
 	// Test force reingest WITHOUT supersedes (should fail)
-	_, err = indexer.StoreContext(db, content, sourceType, nil, true)
+	_, err = indexer.StoreContext(db, content, sourceType, "", nil, true)
 	if err == nil {
 		t.Error("Expected error for force reingest without supersedes_memory_id")
 	}
 
 	// Test force reingest WITH supersedes
-	id3, err := indexer.StoreContext(db, content, sourceType, &id, true)
+	id3, err := indexer.StoreContext(db, content, sourceType, "", &id, true)
 	if err != nil {
 		t.Fatalf("StoreContext failed on force reingest: %v", err)
 	}

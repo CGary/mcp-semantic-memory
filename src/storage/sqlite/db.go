@@ -48,6 +48,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_active_hash ON memories(content_h
 CREATE INDEX IF NOT EXISTS idx_memories_status        ON memories(status);
 CREATE INDEX IF NOT EXISTS idx_memories_superseded_by ON memories(superseded_by);
 CREATE INDEX IF NOT EXISTS idx_memories_project       ON memories(project);
+CREATE INDEX IF NOT EXISTS idx_memories_source_type_created ON memories(source_type, created_at DESC);
 
 -- 3. Chunks derived from the document
 CREATE TABLE IF NOT EXISTS memory_chunks (
@@ -366,12 +367,6 @@ func InitDB(path string) (*sql.DB, error) {
 		}
 	}
 
-	// Apply schema
-	if _, err := db.Exec(schema); err != nil {
-	        db.Close()
-	        return nil, fmt.Errorf("failed to apply schema: %w", err)
-	}
-
 	// Migration: add 'project' column to 'memories' if it doesn't exist
 	// sqlite-vec/sqlite3 doesn't support 'ALTER TABLE memories ADD COLUMN IF NOT EXISTS'
 	// until very recent versions, so we check manually.
@@ -399,13 +394,14 @@ func InitDB(path string) (*sql.DB, error) {
 
 	if !columnExists {
 	        if _, err := db.Exec("ALTER TABLE memories ADD COLUMN project TEXT"); err != nil {
-	                db.Close()
-	                return nil, fmt.Errorf("failed to migrate memories table (add project): %w", err)
+	                // ignore error if table doesn't exist yet
 	        }
-	        if _, err := db.Exec("CREATE INDEX IF NOT EXISTS idx_memories_project ON memories(project)"); err != nil {
-	                db.Close()
-	                return nil, fmt.Errorf("failed to create index on project: %w", err)
-	        }
+	}
+
+	// Apply schema
+	if _, err := db.Exec(schema); err != nil {
+	        db.Close()
+	        return nil, fmt.Errorf("failed to apply schema: %w", err)
 	}
 
 	return db, nil

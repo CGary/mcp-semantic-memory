@@ -2,7 +2,6 @@ package modules
 
 import (
 	"context"
-	"database/sql"
 	"os"
 	"path/filepath"
 	"testing"
@@ -60,15 +59,14 @@ func TestSearchProjectFilter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("filtered search A failed: %v", err)
 	}
-	for _, r := range resultsA {
-		// We would need to load the memory to verify the project,
-		// but the search query itself should handle it.
-		// For now we just check count (should be 1).
-		if len(resultsA) != 1 {
-			t.Errorf("expected 1 result for ProjA, got %d", len(resultsA))
-		}
+	for range resultsA {
+	        // We would need to load the memory to verify the project,
+	        // but the search query itself should handle it.
+	        // For now we just check count (should be 1).
+	        if len(resultsA) != 1 {
+	                t.Errorf("expected 1 result for ProjA, got %d", len(resultsA))
+	        }
 	}
-
 	// 3. Filtered search for non-existent project
 	resultsC, err := search.FuzzySearch(ctx, db, nil, "Content", 10, "ProjC")
 	if err != nil {

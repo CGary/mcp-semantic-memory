@@ -18,14 +18,22 @@ import (
 )
 
 func wrapFuzzySearchResults(results []search.MemorySearchResult) map[string]interface{} {
-	if results == nil {
-		results = []search.MemorySearchResult{}
-	}
-	return map[string]interface{}{
-		"results": results,
-	}
+        if results == nil {
+                results = []search.MemorySearchResult{}
+        }
+        return map[string]interface{}{
+                "results": results,
+        }
 }
 
+func wrapRecallSearchResults(results []search.MemorySearchResult) map[string]interface{} {
+        if results == nil {
+                results = []search.MemorySearchResult{}
+        }
+        return map[string]interface{}{
+                "results": results,
+        }
+}
 func wrapExactSearchResults(results []search.ExactMatchResult) map[string]interface{} {
 	if results == nil {
 		results = []search.ExactMatchResult{}
@@ -94,6 +102,37 @@ func main() {
 	obsCfg := observability.LoadConfigFromEnv()
 	recorder := observability.NewSQLiteRecorder(db, obsCfg)
 	srv.SetRecorder(recorder)
+
+	// Registro de herramienta: recall_recent_session
+	srv.RegisterTool("recall_recent_session", "Retrieve recent session summaries in chronological order",
+	        map[string]interface{}{
+	                "type": "object",
+	                "properties": map[string]interface{}{
+	                        "project": map[string]interface{}{"type": "string"},
+	                        "limit":   map[string]interface{}{"type": "integer", "default": 5, "description": "Maximum number of sessions to return (capped at 50 server-side)"},
+	                },
+	        },
+	        func(params json.RawMessage) (interface{}, error) {
+	                var p struct {
+	                        Project string `json:"project"`
+	                        Limit   int    `json:"limit"`
+	                }
+	                // Allow empty params (will use defaults)
+	                if len(params) > 0 {
+	                        if err := json.Unmarshal(params, &p); err != nil {
+	                                return nil, err
+	                        }
+	                }
+	                if p.Limit == 0 {
+	                        p.Limit = 5
+	                }
+	                results, err := search.RecallRecentSession(context.Background(), db, p.Limit, p.Project)
+	                if err != nil {
+	                        return nil, err
+	                }
+	                return wrapRecallSearchResults(results), nil
+	        },
+	)
 
 	// Registro de herramienta: search_fuzzy
 	srv.RegisterTool("search_fuzzy", "Search memory using hybrid fuzzy matching (Lexical + Semantic)",

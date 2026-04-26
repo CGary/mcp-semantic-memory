@@ -1,9 +1,7 @@
 package modules
 
 import (
-	"database/sql"
 	"os"
-	"path/filepath"
 	"testing"
 
 	_ "github.com/mattn/go-sqlite3"

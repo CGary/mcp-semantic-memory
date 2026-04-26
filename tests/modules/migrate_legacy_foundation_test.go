@@ -49,7 +49,7 @@ func TestMigrateLegacyFoundation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open old DB: %v", err)
 	}
-	_, err = oldDB.Exec("CREATE TABLE memories (id INTEGER PRIMARY KEY, raw_content TEXT, content_hash TEXT)")
+	_, err = oldDB.Exec("CREATE TABLE memories (id INTEGER PRIMARY KEY, raw_content TEXT, content_hash TEXT, source_type TEXT, created_at DATETIME, updated_at DATETIME, superseded_by INTEGER, status TEXT)")
 	if err != nil {
 		t.Fatalf("failed to create old table: %v", err)
 	}

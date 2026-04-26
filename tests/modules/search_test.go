@@ -56,12 +56,12 @@ func TestFuzzySearchHybrid(t *testing.T) {
 
 	// 1. Ingest memories
 	// Memory A: matches lexically and semantically
-	idA, _ := indexer.StoreContext(db, "This is a semantic memory document about vectors.", "note", nil, false)
+	idA, _ := indexer.StoreContext(db, "This is a semantic memory document about vectors.", "note", "", nil, false)
 	// Memory B: matches lexically only
-	indexer.StoreContext(db, "This is a document about lexical search using FTS5.", "note", nil, false)
+	indexer.StoreContext(db, "This is a document about lexical search using FTS5.", "note", "", nil, false)
 	// Memory C: superseded by D
-	idC, _ := indexer.StoreContext(db, "Old version of the semantic spec.", "note", nil, false)
-	idD, _ := indexer.StoreContext(db, "New version of the semantic spec.", "note", &idC, true)
+	idC, _ := indexer.StoreContext(db, "Old version of the semantic spec.", "note", "", nil, false)
+	idD, _ := indexer.StoreContext(db, "New version of the semantic spec.", "note", "", &idC, true)
 
 	// 2. Mock vectorization for Memory A and D (simulate worker completion)
 	// We need to manually insert into memory_chunks_vec for testing search
@@ -82,7 +82,7 @@ func TestFuzzySearchHybrid(t *testing.T) {
 
 	// 3. Perform Fuzzy Search
 	// Querying for "semantic" should rank Memory A high (hybrid match) and Memory D (superseded but match)
-	results, err := search.FuzzySearch(ctx, db, embedder, "semantic", 10)
+	results, err := search.FuzzySearch(ctx, db, embedder, "semantic", 10, "")
 	if err != nil {
 		t.Fatalf("FuzzySearch failed: %v", err)
 	}
@@ -125,12 +125,12 @@ func TestExactSearchReturnsChunkMatches(t *testing.T) {
 	}
 	defer db.Close()
 
-	_, err = indexer.StoreContext(db, "timeout in worker and timeout in API", "note", nil, false)
+	_, err = indexer.StoreContext(db, "timeout in worker and timeout in API", "note", "", nil, false)
 	if err != nil {
 		t.Fatalf("StoreContext failed: %v", err)
 	}
 
-	results, err := search.ExactSearch(context.Background(), db, "timeout", 10)
+	results, err := search.ExactSearch(context.Background(), db, "timeout", 10, "")
 	if err != nil {
 		t.Fatalf("ExactSearch failed: %v", err)
 	}
@@ -155,12 +155,12 @@ func TestExactSearchFallsBackToLiteralSubstringInsideToken(t *testing.T) {
 	}
 	defer db.Close()
 
-	_, err = indexer.StoreContext(db, "timeout_in_worker happened in src/worker/loop.go", "note", nil, false)
+	_, err = indexer.StoreContext(db, "timeout_in_worker happened in src/worker/loop.go", "note", "", nil, false)
 	if err != nil {
 		t.Fatalf("StoreContext failed: %v", err)
 	}
 
-	results, err := search.ExactSearch(context.Background(), db, "timeout_in_wor", 10)
+	results, err := search.ExactSearch(context.Background(), db, "timeout_in_wor", 10, "")
 	if err != nil {
 		t.Fatalf("ExactSearch failed: %v", err)
 	}
@@ -182,12 +182,12 @@ func TestExactSearchPrefersFTSAndDeduplicatesFallback(t *testing.T) {
 	}
 	defer db.Close()
 
-	_, err = indexer.StoreContext(db, "timeout timeout_in_worker timeout", "note", nil, false)
+	_, err = indexer.StoreContext(db, "timeout timeout_in_worker timeout", "note", "", nil, false)
 	if err != nil {
 		t.Fatalf("StoreContext failed: %v", err)
 	}
 
-	results, err := search.ExactSearch(context.Background(), db, "timeout", 10)
+	results, err := search.ExactSearch(context.Background(), db, "timeout", 10, "")
 	if err != nil {
 		t.Fatalf("ExactSearch failed: %v", err)
 	}
