@@ -1,7 +1,7 @@
 {
-  "event_count": 12,
-  "last_event_id": "01KQ5E3FWV5D18TAGW8N95619T",
-  "materialized_at": "2026-04-26T17:41:25.531300+00:00",
+  "event_count": 14,
+  "last_event_id": "01KQ5E3RRMTR8DSFMRTQAVE21C",
+  "materialized_at": "2026-04-26T17:41:34.612486+00:00",
   "mission_number": "",
   "mission_slug": "hsme-unified-cli-01KQ59MV",
   "mission_type": "software-dev",
@@ -12,17 +12,17 @@
     "claimed": 0,
     "done": 0,
     "for_review": 0,
-    "in_progress": 0,
+    "in_progress": 1,
     "in_review": 0,
-    "planned": 7
+    "planned": 6
   },
   "work_packages": {
     "WP01": {
-      "actor": "user",
+      "actor": "gemini:o3:implementer:implementer",
       "force_count": 2,
-      "lane": "planned",
-      "last_event_id": "01KQ5E3FWV5D18TAGW8N95619T",
-      "last_transition_at": "2026-04-26T17:41:25.531300+00:00"
+      "lane": "in_progress",
+      "last_event_id": "01KQ5E3RRMTR8DSFMRTQAVE21C",
+      "last_transition_at": "2026-04-26T17:41:34.612486+00:00"
     },
     "WP02": {
       "actor": "finalize-tasks",
