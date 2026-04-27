@@ -1,7 +1,7 @@
 {
-  "event_count": 9,
-  "last_event_id": "01KQ7CF1C13KK5KREAR4HDBAV1",
-  "materialized_at": "2026-04-27T11:51:15.585782+00:00",
+  "event_count": 11,
+  "last_event_id": "01KQ7CFF55V6P0WSB37548RGH4",
+  "materialized_at": "2026-04-27T11:51:29.701334+00:00",
   "mission_number": "",
   "mission_slug": "hsme-audit-fixes-01KQ5XVT",
   "mission_type": "software-dev",
@@ -12,9 +12,9 @@
     "claimed": 0,
     "done": 0,
     "for_review": 2,
-    "in_progress": 0,
+    "in_progress": 1,
     "in_review": 0,
-    "planned": 1
+    "planned": 0
   },
   "work_packages": {
     "WP01": {
@@ -32,11 +32,11 @@
       "last_transition_at": "2026-04-27T11:51:15.585782+00:00"
     },
     "WP03": {
-      "actor": "finalize-tasks",
+      "actor": "implement-command",
       "force_count": 1,
-      "lane": "planned",
-      "last_event_id": "01KQ7AX0RJ4VMBSY4T229WHE5J",
-      "last_transition_at": "2026-04-27T11:23:56.562591+00:00"
+      "lane": "in_progress",
+      "last_event_id": "01KQ7CFF55V6P0WSB37548RGH4",
+      "last_transition_at": "2026-04-27T11:51:29.701334+00:00"
     }
   }
 }
