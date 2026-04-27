@@ -12,8 +12,8 @@
 | T001 | Fix fuzzy.go: restructure project-branch query as CTE (KNN first, then JOIN) | WP01 | no | none | [D] |
 | T002 | Add godog BDD test: search_fuzzy with project filter fails pre-fix, passes post-fix | WP01 | no | T001 | [D] |
 | T003 | Regression: verify search_fuzzy WITHOUT project filter still works | WP01 | no | T001 | [D] |
-| T004 | Fix README.md: change OBS_LEVEL → HSME_OBS_LEVEL | WP02 | no | none |
-| T005 | Add godog BDD test: OBS_LEVEL (wrong) → 0 rows; HSME_OBS_LEVEL (correct) → data | WP02 | no | T004 |
+| T004 | Fix README.md: change OBS_LEVEL → HSME_OBS_LEVEL | WP02 | no | none | [D] |
+| T005 | Add godog BDD test: OBS_LEVEL (wrong) → 0 rows; HSME_OBS_LEVEL (correct) → data | WP02 | no | T004 | [D] |
 | T006 | Fix maintenance.go: read last_completed_bucket_start_utc and iterate gaps | WP03 | no | none |
 | T007 | Fix ops/main.go: wire catch-up loop into runRawToMinute | WP03 | no | T006 |
 | T008 | Add godog BDD test: rollup catches up 5 missed buckets post-restart | WP03 | no | T007 |
@@ -63,8 +63,8 @@ The bug: `README.md:127` says `OBS_LEVEL` but the code correctly reads `HSME_OBS
 **Test**: godog BDD scenario in `tests/bdd/observability_env.feature`
 
 **Subtasks**:
-- [ ] T004 Fix README.md: change OBS_LEVEL → HSME_OBS_LEVEL
-- [ ] T005 Add godog BDD test: OBS_LEVEL (wrong) → 0 rows; HSME_OBS_LEVEL (correct) → data
+- [x] T004 Fix README.md: change OBS_LEVEL → HSME_OBS_LEVEL
+- [x] T005 Add godog BDD test: OBS_LEVEL (wrong) → 0 rows; HSME_OBS_LEVEL (correct) → data
 
 **Implementation sketch**:
 1. Read `README.md` line ~127
