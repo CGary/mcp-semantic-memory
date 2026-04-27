@@ -268,3 +268,7 @@ Feature: Rollup catch-up for missed buckets
 - Idempotency: verify bucket already in checkpoint is not reprocessed
 - Run `godog run tests/bdd/rollup_catchup.feature` — must pass
 - Run `go build ./cmd/ops/...` — must compile
+
+## Activity Log
+
+- 2026-04-27T15:31:38Z – claude – shell_pid=2504561 – Implemented FR-003 by adding a catch-up loop to rollup jobs. The service now reads the last completed bucket checkpoint and iterates through any missed buckets within the retention window. Added comprehensive BDD tests for catch-up, idempotency, and retention window handling.
