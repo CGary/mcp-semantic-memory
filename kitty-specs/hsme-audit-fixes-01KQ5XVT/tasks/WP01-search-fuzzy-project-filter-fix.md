@@ -204,3 +204,7 @@ Feature: search_fuzzy with project filter uses vector search
 - Verify the CTE approach is correct: KNN scan with LIMIT directly on vec0, then JOIN for project filter
 - Run `godog run tests/bdd/search_fuzzy_project.feature` — must pass
 - Run full test suite: `go test -tags "sqlite_fts5 sqlite_vec" ./...` — must pass
+
+## Activity Log
+
+- 2026-04-27T11:39:20Z – claude – shell_pid=2450642 – Fixed FR-001 by restructuring vector query as two-step process to avoid vec0 constraint violation. Implemented graceful degradation coverage reporting as 'partial' when vector search is unavailable. Added BDD scenarios covering all cases.
