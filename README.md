@@ -22,10 +22,32 @@ HSME separa runtime, procesamiento semántico y mantenimiento operativo para man
 ## 📊 Observabilidad Industrial
 
 HSME v1.0.1 integra un sistema de telemetría interno completo persistido en SQLite:
+
 *   **Distributed Tracing**: Registro de trazas y spans para cada request MCP y tarea del worker.
 *   **Metric Rollups**: Agregación automática de métricas (p50, p95, throughput) por minuto, hora y día.
 *   **Retention Policies**: Limpieza automática de datos de telemetría según antigüedad y criticidad.
 *   **Operator Views**: Vistas SQL predefinidas para identificar operaciones lentas y errores recurrentes (`obs_recent_slow_operations`, `obs_error_events`).
+*   **Catch-up en restart**: Si `hsme-ops` no corre por un período, los buckets perdidos se procesan al reiniciar usando checkpoint persistente (`last_completed_bucket_start_utc`).
+
+### Variables de Entorno de Observabilidad
+
+| Variable | Default | Descripción |
+|----------|---------|-------------|
+| `HSME_OBS_LEVEL` | `off` | Nivel: `off`, `basic`, `debug`, `trace` |
+| `HSME_OBS_SAMPLE_RATE` | `0.10` | Tasa de sampleo para modo basic |
+| `HSME_OBS_SLOW_THRESHOLDS` | (ver abajo) | Umbrales de operaciones lentas |
+| `HSME_OBS_RAW_RETENTION_DAYS` | `7` | Retención para trazas/spans/events crudos |
+| `HSME_OBS_MINUTE_RETENTION_DAYS` | `7` | Retención para rollups por minuto |
+| `HSME_OBS_HOUR_RETENTION_DAYS` | `30` | Retención para rollups por hora |
+| `HSME_OBS_DAY_RETENTION_DAYS` | `365` | Retención para rollups por día |
+
+Umbrales por defecto para operaciones lentas:
+- `mcp.request`: 100ms
+- `mcp.tools/call`: 100ms
+- `worker.lease`: 200ms
+- `worker.execute`: 2s
+- `ops.raw_to_minute`: 2s
+- `ops.retention`: 2s
 
 ## 🚀 Instalación y Setup
 
@@ -54,11 +76,12 @@ Consulta la [Guía de Cutover](docs/legacy-cutover-checklist.md) para el checkli
 
 ## 📁 Filtrado por Proyecto
 
-Las herramientas de búsqueda ahora soportan un parámetro opcional `project` para restringir los resultados a un contexto específico:
+Las herramientas de búsqueda soportan un parámetro opcional `project` para restringir los resultados a un contexto específico:
 
 *   **`search_fuzzy`**: Acepta `project` (string) para filtrar candidatos léxicos y semánticos.
 *   **`search_exact`**: Acepta `project` (string) para búsquedas de subcadenas exactas.
 *   **`store_context`**: Permite asignar un `project` al guardar nuevas memorias.
+*   **`recall_recent_session`**: Acepta `project` (string) para filtrar memorias recentes por proyecto.
 
 Si se omite el proyecto, la búsqueda se realiza sobre todo el corpus (comportamiento por defecto).
 
@@ -110,7 +133,7 @@ Para supervisar el sistema, se utiliza directamente el **CLI Unificado** (`hsme-
 - `just serve`: Inicia el servidor MCP (comunicación stdio).
 - `just install`: Compila e instala todos los binarios (`hsme`, `hsme-worker`, `hsme-ops`, `hsme-cli`) en `~/go/bin`.
 - `just cli-install`: Instala únicamente el CLI.
-- `just migrate [full|delta]`: Ejecuta la migración desde Engram legado.
+- `just migrate [full|delta]`: Ejecuta la migración desde Engram legado (mode: `full`, `delta`, o `dry-run`).
 - `just backup/restore`: Gestión de snapshots atómicos compatibles con WAL.
 - `just clean`: Elimina binarios locales y limpia los archivos de log.
 
@@ -124,7 +147,7 @@ Para supervisar el sistema, se utiliza directamente el **CLI Unificado** (`hsme-
       "env": {
         "SQLITE_DB_PATH": "/absolute/path/to/data/engram.db",
         "OLLAMA_HOST": "http://localhost:11434",
-        "OBS_LEVEL": "basic" 
+        "HSME_OBS_LEVEL": "basic" 
       }
     }
   }

@@ -488,20 +488,21 @@ FTS5 is applied to `memory_chunks`, not to `memories`, to remain consistent with
 
 ### 10.2 Synchronization
 
-`memory_chunks_fts` is declared as an **external-content** FTS5 table. Because the spec deliberately avoids implicit triggers, the application must issue the synchronization commands explicitly:
-
-After inserting a chunk:
+`memory_chunks_fts` is declared as an **external-content** FTS5 table synchronized automatically via SQLite triggers:
 
 ```sql
-INSERT INTO memory_chunks_fts(rowid, chunk_text)
-VALUES (:chunk_id, :chunk_text);
-```
+CREATE TRIGGER IF NOT EXISTS memory_chunks_ai AFTER INSERT ON memory_chunks BEGIN
+    INSERT INTO memory_chunks_fts(rowid, chunk_text) VALUES (new.id, new.chunk_text);
+END;
 
-Before deleting or updating a chunk's text:
+CREATE TRIGGER IF NOT EXISTS memory_chunks_ad AFTER DELETE ON memory_chunks BEGIN
+    INSERT INTO memory_chunks_fts(memory_chunks_fts, rowid, chunk_text) VALUES ('delete', old.id, old.chunk_text);
+END;
 
-```sql
-INSERT INTO memory_chunks_fts(memory_chunks_fts, rowid, chunk_text)
-VALUES ('delete', :chunk_id, :old_chunk_text);
+CREATE TRIGGER IF NOT EXISTS memory_chunks_au AFTER UPDATE ON memory_chunks BEGIN
+    INSERT INTO memory_chunks_fts(memory_chunks_fts, rowid, chunk_text) VALUES ('delete', old.id, old.chunk_text);
+    INSERT INTO memory_chunks_fts(rowid, chunk_text) VALUES (new.id, new.chunk_text);
+END;
 ```
 
 For bulk repair or migration:
@@ -509,8 +510,6 @@ For bulk repair or migration:
 ```sql
 INSERT INTO memory_chunks_fts(memory_chunks_fts) VALUES ('rebuild');
 ```
-
-These operations must live in the same SQLite transaction as the underlying mutation to `memory_chunks`. If any of them fails, the entire transaction rolls back.
 
 ### 10.3 Tokenizer
 
@@ -620,6 +619,7 @@ Input:
 {
   "content": "string",
   "source_type": "manual|log|code|note",
+  "project": "string|null",
   "supersedes_memory_id": "number|null",
   "force_reingest": "boolean|null"
 }
@@ -630,10 +630,7 @@ Output:
 ```json
 {
   "memory_id": 123,
-  "chunk_count": 4,
-  "deduplicated": false,
-  "status": "stored",
-  "pending_tasks": ["embed", "graph_extract"]
+  "status": "stored, pending processing"
 }
 ```
 
@@ -646,7 +643,8 @@ Input:
 ```json
 {
   "query": "string",
-  "limit": 10
+  "limit": 10,
+  "project": "string|null"
 }
 ```
 
@@ -681,7 +679,8 @@ Input:
 ```json
 {
   "keyword": "string",
-  "limit": 10
+  "limit": 10,
+  "project": "string|null"
 }
 ```
 
@@ -784,23 +783,102 @@ Operational rules:
 
 ---
 
-## 16. Minimum Observability
+## 16. Observability
 
-V1 must record the following metrics:
+The system uses environment variables prefixed with `HSME_OBS_*`:
 
-* `store_context` latency;
-* embedding latency per chunk;
-* chunks per memory;
-* counts of tasks by state (`pending`, `processing`, `completed`, `failed`);
-* graph extraction error rate;
-* FTS5 and vector search latency;
-* count of `vector_coverage` values returned by `search_fuzzy`, to size the embedding backlog.
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `HSME_OBS_LEVEL` | `off` | Observability level: `off`, `basic`, `debug`, `trace` |
+| `HSME_OBS_SAMPLE_RATE` | `0.10` | Sampling rate (0.0-1.0) for basic mode |
+| `HSME_OBS_SLOW_THRESHOLDS` | (see below) | Comma-separated `key=duration` thresholds |
+| `HSME_OBS_RAW_RETENTION_DAYS` | `7` | Retention for raw traces/spans/events |
+| `HSME_OBS_MINUTE_RETENTION_DAYS` | `7` | Retention for minute rollups |
+| `HSME_OBS_HOUR_RETENTION_DAYS` | `30` | Retention for hour rollups |
+| `HSME_OBS_DAY_RETENTION_DAYS` | `365` | Retention for day rollups |
+| `HSME_OBS_FLUSH_INTERVAL_SECONDS` | `60` | Flush interval for rollups |
 
-This enables empirical validation against the stated objectives.
+Default slow thresholds:
+- `mcp.request`: 100ms
+- `mcp.tools/call`: 100ms
+- `worker.lease`: 200ms
+- `worker.execute`: 2s
+- `ops.raw_to_minute`: 2s
+- `ops.retention`: 2s
+
+The system records:
+- `store_context` latency
+- embedding latency per chunk
+- chunks per memory
+- counts of tasks by state (`pending`, `processing`, `completed`, `failed`)
+- graph extraction error rate
+- FTS5 and vector search latency
+- count of `vector_coverage` values returned by `search_fuzzy`
+- rollup jobs: `raw_to_minute`, `minute_to_hour`, `hour_to_day`, `retention_cleanup`
+- checkpoint (`last_completed_bucket_start_utc`) persisted for catch-up on restart
 
 ---
 
-## 17. Residual Risks
+## 17. Additional MCP Tools
+
+### 14.5 `recall_recent_session`
+
+Retrieves recent session summaries in chronological order (pure SQL, no embeddings).
+
+Input:
+
+```json
+{
+  "project": "string|null",
+  "limit": 5
+}
+```
+
+Output:
+
+```json
+{
+  "results": [
+    {
+      "memory_id": 123,
+      "score": 0.82,
+      "is_superseded": false,
+      "vector_coverage": "complete|partial|none",
+      "highlights": [...]
+    }
+  ]
+}
+```
+
+### 14.6 `explore_knowledge_graph`
+
+Traces entity dependencies across the knowledge graph.
+
+Input:
+
+```json
+{
+  "entity_name": "string",
+  "direction": "downstream|upstream|both",
+  "max_depth": 5,
+  "max_nodes": 100
+}
+```
+
+Output:
+
+```json
+{
+  "entity": "redis",
+  "nodes": [...],
+  "edges": [...],
+  "truncated": false
+}
+```
+
+---
+
+## 18. Residual Risks
 
 Even after this revision, operational risks remain:
 
@@ -813,7 +891,7 @@ Even after this revision, operational risks remain:
 
 ---
 
-## 18. Scope of V1
+## 19. Scope of V1
 
 V1 focuses on:
 
@@ -822,8 +900,9 @@ V1 focuses on:
 * FTS5 and vector search with RRF;
 * asynchronous worker with leasing and retries for both embedding and graph extraction;
 * graph with per-memory evidence;
-* stable MCP contracts including `store_context`, `search_fuzzy`, `search_exact`, and `trace_dependencies`;
-* explicit schema versioning.
+* stable MCP contracts including `store_context`, `search_fuzzy`, `search_exact`, `recall_recent_session`, and `explore_knowledge_graph`;
+* explicit schema versioning;
+* observability with automatic rollups and retention policies.
 
 Not recommended for V1:
 
@@ -836,7 +915,7 @@ Not recommended for V1:
 
 ---
 
-## 19. Viability Criteria
+## 20. Viability Criteria
 
 The project is considered viable for implementation provided that:
 
@@ -846,5 +925,5 @@ The project is considered viable for implementation provided that:
 * the async queue handles leasing, retries, and per-type tasks;
 * MCP tools expose explicit contracts including the `vector_coverage` signal;
 * the supersedence policy remains manual and explicit;
-* the FTS5 external-content table is kept in sync by the application on every mutation;
+* the FTS5 external-content table is kept in sync via database triggers on every mutation to `memory_chunks`;
 * the `memory_chunks_vec` virtual table is cleaned up explicitly on any chunk deletion path.
