@@ -177,3 +177,4 @@ Feature: Observability environment variable
 
 - 2026-04-27T11:51:15Z – claude – shell_pid=2481918 – Fixed FR-002 by correcting README.md variable name. Added BDD scenarios verifying that HSME_OBS_LEVEL works correctly while OBS_LEVEL does not produce traces.
 - 2026-04-27T15:41:07Z – gemini:flash:reviewer:reviewer – shell_pid=2811773 – Started review via action command
+- 2026-04-27T15:47:26Z – gemini:flash:reviewer:reviewer – shell_pid=2811773 – Review passed: README correctly updated to document HSME_OBS_LEVEL. BDD tests verify that the correct variable enables observability while the previous one doesn't. Restored .mcp.json which was accidentally deleted.
