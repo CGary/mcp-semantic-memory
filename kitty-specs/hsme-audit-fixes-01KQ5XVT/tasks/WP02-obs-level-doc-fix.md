@@ -172,3 +172,7 @@ Feature: Observability environment variable
 - Run `grep "HSME_OBS_" README.md` — should show all correctly-prefixed vars
 - Run `godog run tests/bdd/observability_env.feature` — should pass
 - The code at `src/observability/config.go` should NOT be modified (already correct)
+
+## Activity Log
+
+- 2026-04-27T11:51:15Z – claude – shell_pid=2481918 – Fixed FR-002 by correcting README.md variable name. Added BDD scenarios verifying that HSME_OBS_LEVEL works correctly while OBS_LEVEL does not produce traces.
