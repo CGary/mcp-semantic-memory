@@ -9,9 +9,9 @@
 
 | ID | Description | WP | Parallel | Dependencies |
 |----|-------------|----|----------|--------------|
-| T001 | Fix fuzzy.go: restructure project-branch query as CTE (KNN first, then JOIN) | WP01 | no | none |
-| T002 | Add godog BDD test: search_fuzzy with project filter fails pre-fix, passes post-fix | WP01 | no | T001 |
-| T003 | Regression: verify search_fuzzy WITHOUT project filter still works | WP01 | no | T001 |
+| T001 | Fix fuzzy.go: restructure project-branch query as CTE (KNN first, then JOIN) | WP01 | no | none | [D] |
+| T002 | Add godog BDD test: search_fuzzy with project filter fails pre-fix, passes post-fix | WP01 | no | T001 | [D] |
+| T003 | Regression: verify search_fuzzy WITHOUT project filter still works | WP01 | no | T001 | [D] |
 | T004 | Fix README.md: change OBS_LEVEL → HSME_OBS_LEVEL | WP02 | no | none |
 | T005 | Add godog BDD test: OBS_LEVEL (wrong) → 0 rows; HSME_OBS_LEVEL (correct) → data | WP02 | no | T004 |
 | T006 | Fix maintenance.go: read last_completed_bucket_start_utc and iterate gaps | WP03 | no | none |
@@ -32,9 +32,9 @@ The bug: `src/core/search/fuzzy.go:387` project-branch vector query puts LIMIT a
 **Test**: godog BDD scenario in `tests/bdd/search_fuzzy_project.feature`
 
 **Subtasks**:
-- [ ] T001 Fix fuzzy.go: restructure project-branch query as CTE (KNN first, then JOIN)
-- [ ] T002 Add godog BDD test: search_fuzzy with project filter fails pre-fix, passes post-fix
-- [ ] T003 Regression: verify search_fuzzy WITHOUT project filter still works
+- [x] T001 Fix fuzzy.go: restructure project-branch query as CTE (KNN first, then JOIN)
+- [x] T002 Add godog BDD test: search_fuzzy with project filter fails pre-fix, passes post-fix
+- [x] T003 Regression: verify search_fuzzy WITHOUT project filter still works
 
 **Implementation sketch**:
 1. Read `src/core/search/fuzzy.go` around line 387
