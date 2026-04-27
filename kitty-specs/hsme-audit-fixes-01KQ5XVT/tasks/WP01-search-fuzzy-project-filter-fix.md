@@ -17,8 +17,8 @@ subtasks:
 - T001
 - T002
 - T003
-agent: claude
-shell_pid: '2450642'
+agent: "gemini:flash:reviewer:reviewer"
+shell_pid: "2797548"
 history: []
 authoritative_surface: src/core/search/
 execution_mode: code_change
@@ -208,3 +208,4 @@ Feature: search_fuzzy with project filter uses vector search
 ## Activity Log
 
 - 2026-04-27T11:39:20Z – claude – shell_pid=2450642 – Fixed FR-001 by restructuring vector query as two-step process to avoid vec0 constraint violation. Implemented graceful degradation coverage reporting as 'partial' when vector search is unavailable. Added BDD scenarios covering all cases.
+- 2026-04-27T15:32:25Z – gemini:flash:reviewer:reviewer – shell_pid=2797548 – Started review via action command
