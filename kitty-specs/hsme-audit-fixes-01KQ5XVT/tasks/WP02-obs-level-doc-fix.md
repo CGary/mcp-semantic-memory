@@ -4,6 +4,7 @@ title: Fix OBS_LEVEL Documentation Mismatch (FR-002)
 dependencies: []
 requirement_refs:
 - FR-002
+- FR-004
 - NFR-002
 planning_base_branch: main
 merge_target_branch: main

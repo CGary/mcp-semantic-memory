@@ -6,6 +6,7 @@ requirement_refs:
 - C-003
 - C-004
 - FR-003
+- FR-004
 - NFR-003
 planning_base_branch: main
 merge_target_branch: main

@@ -46,7 +46,7 @@ The bug: `src/core/search/fuzzy.go:387` project-branch vector query puts LIMIT a
 
 **Risks**: Non-project search must not regress (C-001). CTE over-fetch must not cause OOM on large k values.
 
-**Dependencies**: none (WP01 is first)
+**Dependencies**: none
 
 **Estimated prompt size**: ~350 lines
 
@@ -74,7 +74,7 @@ The bug: `README.md:127` says `OBS_LEVEL` but the code correctly reads `HSME_OBS
 
 **Risks**: Low — only documentation. Verify grep for any remaining OBS_LEVEL in README.
 
-**Dependencies**: none (WP02 independent)
+**Dependencies**: none
 
 **Estimated prompt size**: ~280 lines
 

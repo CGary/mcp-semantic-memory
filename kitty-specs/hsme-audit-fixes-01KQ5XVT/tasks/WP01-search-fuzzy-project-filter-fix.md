@@ -4,6 +4,7 @@ title: Fix search_fuzzy Project Filter Vector Search (FR-001)
 dependencies: []
 requirement_refs:
 - FR-001
+- FR-004
 - NFR-001
 - NFR-004
 planning_base_branch: main
