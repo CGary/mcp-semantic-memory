@@ -14,10 +14,10 @@
 | T003 | Regression: verify search_fuzzy WITHOUT project filter still works | WP01 | no | T001 | [D] |
 | T004 | Fix README.md: change OBS_LEVEL → HSME_OBS_LEVEL | WP02 | no | none | [D] |
 | T005 | Add godog BDD test: OBS_LEVEL (wrong) → 0 rows; HSME_OBS_LEVEL (correct) → data | WP02 | no | T004 | [D] |
-| T006 | Fix maintenance.go: read last_completed_bucket_start_utc and iterate gaps | WP03 | no | none |
-| T007 | Fix ops/main.go: wire catch-up loop into runRawToMinute | WP03 | no | T006 |
-| T008 | Add godog BDD test: rollup catches up 5 missed buckets post-restart | WP03 | no | T007 |
-| T009 | Edge case: verify gap > retention window is handled gracefully | WP03 | no | T008 |
+| T006 | Fix maintenance.go: read last_completed_bucket_start_utc and iterate gaps | WP03 | no | none | [D] |
+| T007 | Fix ops/main.go: wire catch-up loop into runRawToMinute | WP03 | no | T006 | [D] |
+| T008 | Add godog BDD test: rollup catches up 5 missed buckets post-restart | WP03 | no | T007 | [D] |
+| T009 | Edge case: verify gap > retention window is handled gracefully | WP03 | no | T008 | [D] |
 
 ---
 
@@ -91,10 +91,10 @@ The bug: `runRawToMinute` only processes `now.Truncate(minute)` — never reads 
 **Test**: godog BDD scenario in `tests/bdd/rollup_catchup.feature`
 
 **Subtasks**:
-- [ ] T006 Fix maintenance.go: read last_completed_bucket_start_utc and iterate gaps
-- [ ] T007 Fix ops/main.go: wire catch-up loop into runRawToMinute
-- [ ] T008 Add godog BDD test: rollup catches up 5 missed buckets post-restart
-- [ ] T009 Edge case: verify gap > retention window is handled gracefully
+- [x] T006 Fix maintenance.go: read last_completed_bucket_start_utc and iterate gaps
+- [x] T007 Fix ops/main.go: wire catch-up loop into runRawToMinute
+- [x] T008 Add godog BDD test: rollup catches up 5 missed buckets post-restart
+- [x] T009 Edge case: verify gap > retention window is handled gracefully
 
 **Implementation sketch**:
 1. Read `src/observability/maintenance.go` to find runRawToMinute
