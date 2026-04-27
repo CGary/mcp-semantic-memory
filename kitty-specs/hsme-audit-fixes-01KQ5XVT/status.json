@@ -1,16 +1,16 @@
 {
-  "event_count": 18,
-  "last_event_id": "01KQ7T30APP87RRXYBK5QWX8WQ",
-  "materialized_at": "2026-04-27T15:49:21.366603+00:00",
-  "mission_number": "",
+  "event_count": 21,
+  "last_event_id": "01KQ7TK0MS9GSS0GCVHYHRK12T",
+  "materialized_at": "2026-04-27T15:58:05.977750+00:00",
+  "mission_number": "9",
   "mission_slug": "hsme-audit-fixes-01KQ5XVT",
   "mission_type": "software-dev",
   "summary": {
-    "approved": 3,
+    "approved": 0,
     "blocked": 0,
     "canceled": 0,
     "claimed": 0,
-    "done": 0,
+    "done": 3,
     "for_review": 0,
     "in_progress": 0,
     "in_review": 0,
@@ -18,25 +18,25 @@
   },
   "work_packages": {
     "WP01": {
-      "actor": "user",
+      "actor": "merge",
       "force_count": 1,
-      "lane": "approved",
-      "last_event_id": "01KQ7SEB9Q19AH8M7RAB37ZDNQ",
-      "last_transition_at": "2026-04-27T15:38:04.471559+00:00"
+      "lane": "done",
+      "last_event_id": "01KQ7TK0KAQWP7F3S85K9S2YAZ",
+      "last_transition_at": "2026-04-27T15:58:05.931005+00:00"
     },
     "WP02": {
-      "actor": "user",
+      "actor": "merge",
       "force_count": 1,
-      "lane": "approved",
-      "last_event_id": "01KQ7SZGGD6FPE5VWRAZ6CX7PE",
-      "last_transition_at": "2026-04-27T15:47:26.861862+00:00"
+      "lane": "done",
+      "last_event_id": "01KQ7TK0MFG64N2FSX9MXJA7HZ",
+      "last_transition_at": "2026-04-27T15:58:05.967605+00:00"
     },
     "WP03": {
-      "actor": "user",
+      "actor": "merge",
       "force_count": 1,
-      "lane": "approved",
-      "last_event_id": "01KQ7T30APP87RRXYBK5QWX8WQ",
-      "last_transition_at": "2026-04-27T15:49:21.366603+00:00"
+      "lane": "done",
+      "last_event_id": "01KQ7TK0MS9GSS0GCVHYHRK12T",
+      "last_transition_at": "2026-04-27T15:58:05.977750+00:00"
     }
   }
 }
