@@ -273,3 +273,4 @@ Feature: Rollup catch-up for missed buckets
 
 - 2026-04-27T15:31:38Z – claude – shell_pid=2504561 – Implemented FR-003 by adding a catch-up loop to rollup jobs. The service now reads the last completed bucket checkpoint and iterates through any missed buckets within the retention window. Added comprehensive BDD tests for catch-up, idempotency, and retention window handling.
 - 2026-04-27T15:47:34Z – gemini:flash:reviewer:reviewer – shell_pid=2823102 – Started review via action command
+- 2026-04-27T15:49:21Z – gemini:flash:reviewer:reviewer – shell_pid=2823102 – Review passed: Implementation successfully adds catch-up logic to rollup jobs. The generic runJobWithCatchup helper ensures consistency across different rollup levels. Idempotency and retention window guards are correctly implemented. BDD tests verify the catch-up behavior for multiple missed buckets.
