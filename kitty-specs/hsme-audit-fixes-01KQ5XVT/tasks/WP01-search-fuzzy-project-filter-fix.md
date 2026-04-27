@@ -209,3 +209,4 @@ Feature: search_fuzzy with project filter uses vector search
 
 - 2026-04-27T11:39:20Z – claude – shell_pid=2450642 – Fixed FR-001 by restructuring vector query as two-step process to avoid vec0 constraint violation. Implemented graceful degradation coverage reporting as 'partial' when vector search is unavailable. Added BDD scenarios covering all cases.
 - 2026-04-27T15:32:25Z – gemini:flash:reviewer:reviewer – shell_pid=2797548 – Started review via action command
+- 2026-04-27T15:38:04Z – gemini:flash:reviewer:reviewer – shell_pid=2797548 – Review passed: Implementation correctly addresses the vec0 constraint violation by using a two-step retrieval process for project-filtered searches. Graceful degradation for vector search is correctly handled with appropriate coverage reporting. BDD tests verify all scenarios including regressions.
