@@ -78,12 +78,8 @@ func (m *MaintenanceService) RunRetention(ctx context.Context, now time.Time) er
 }
 
 func (m *MaintenanceService) runRawToMinute(ctx context.Context, now time.Time) error {
-	bucketStart := now.UTC().Truncate(time.Minute)
-	bucketEnd := bucketStart.Add(time.Minute)
-	return sqlTx(ctx, m.db, func(tx *sql.Tx) error {
-		if err := m.updateJobStatus(ctx, tx, "raw_to_minute", "running", "", now, false); err != nil {
-			return err
-		}
+	return m.runJobWithCatchup(ctx, "raw_to_minute", now, time.Minute, m.cfg.RawRetentionDays, func(ctx context.Context, tx *sql.Tx, bucketStart time.Time) error {
+		bucketEnd := bucketStart.Add(time.Minute)
 		rows, err := tx.QueryContext(ctx, `SELECT component, operation_name, ifnull(tool_name,''), ifnull(task_type,''), trace_kind, COUNT(*), SUM(CASE WHEN status='ok' THEN 1 ELSE 0 END), SUM(CASE WHEN status!='ok' THEN 1 ELSE 0 END), SUM(CASE WHEN sampled=1 THEN 1 ELSE 0 END), SUM(duration_us), MAX(duration_us), MAX(started_at_utc) FROM obs_traces WHERE started_at_utc >= ? AND started_at_utc < ? GROUP BY component, operation_name, tool_name, task_type, trace_kind`, bucketStart.Format(time.RFC3339Nano), bucketEnd.Format(time.RFC3339Nano))
 		if err != nil {
 			return err
@@ -109,29 +105,26 @@ func (m *MaintenanceService) runRawToMinute(ctx context.Context, now time.Time) 
 				return err
 			}
 		}
-		if err := rows.Err(); err != nil {
-			return err
-		}
-		return m.updateJobStatus(ctx, tx, "raw_to_minute", "ok", bucketStart.Format(time.RFC3339Nano), now, true)
+		return rows.Err()
 	})
 }
 
 func (m *MaintenanceService) runDerivedRollup(ctx context.Context, now time.Time, sourceLevel, targetLevel, jobName string) error {
-	var bucketStart, bucketEnd time.Time
+	var bucketSize time.Duration
+	var retentionDays int
 	switch targetLevel {
 	case "hour":
-		bucketStart = now.UTC().Truncate(time.Hour)
-		bucketEnd = bucketStart.Add(time.Hour)
+		bucketSize = time.Hour
+		retentionDays = m.cfg.MinuteRetentionDays
 	case "day":
-		bucketStart = now.UTC().Truncate(24 * time.Hour)
-		bucketEnd = bucketStart.Add(24 * time.Hour)
+		bucketSize = 24 * time.Hour
+		retentionDays = m.cfg.HourRetentionDays
 	default:
 		return fmt.Errorf("unsupported target level: %s", targetLevel)
 	}
-	return sqlTx(ctx, m.db, func(tx *sql.Tx) error {
-		if err := m.updateJobStatus(ctx, tx, jobName, "running", "", now, false); err != nil {
-			return err
-		}
+
+	return m.runJobWithCatchup(ctx, jobName, now, bucketSize, retentionDays, func(ctx context.Context, tx *sql.Tx, bucketStart time.Time) error {
+		bucketEnd := bucketStart.Add(bucketSize)
 		rows, err := tx.QueryContext(ctx, `SELECT component, operation_name, ifnull(tool_name,''), ifnull(task_type,''), trace_kind, SUM(total_count), SUM(success_count), SUM(error_count), SUM(slow_count), SUM(sampled_count), SUM(duration_total_us), MAX(duration_max_us), MAX(last_source_event_at_utc) FROM obs_metric_rollups WHERE bucket_level = ? AND bucket_start_utc >= ? AND bucket_start_utc < ? GROUP BY component, operation_name, tool_name, task_type, trace_kind`, sourceLevel, bucketStart.Format(time.RFC3339Nano), bucketEnd.Format(time.RFC3339Nano))
 		if err != nil {
 			return err
@@ -153,11 +146,46 @@ func (m *MaintenanceService) runDerivedRollup(ctx context.Context, now time.Time
 				return err
 			}
 		}
-		if err := rows.Err(); err != nil {
+		return rows.Err()
+	})
+}
+
+func (m *MaintenanceService) runJobWithCatchup(ctx context.Context, jobName string, now time.Time, bucketSize time.Duration, retentionDays int, processFn func(context.Context, *sql.Tx, time.Time) error) error {
+	lastCheckpoint, err := m.getLastCompletedBucket(ctx, jobName)
+	if err != nil {
+		return err
+	}
+
+	currentBucket := now.UTC().Truncate(bucketSize)
+
+	// If no checkpoint, start from current bucket (or one before to be safe)
+	if lastCheckpoint.IsZero() {
+		lastCheckpoint = currentBucket.Add(-bucketSize)
+	}
+
+	// Retention cutoff guard
+	retentionCutoff := now.UTC().AddDate(0, 0, -retentionDays)
+	if lastCheckpoint.Before(retentionCutoff) {
+		lastCheckpoint = retentionCutoff.Truncate(bucketSize)
+	}
+
+	// Catch-up loop
+	for ts := lastCheckpoint.Add(bucketSize); !ts.After(currentBucket); ts = ts.Add(bucketSize) {
+		err := sqlTx(ctx, m.db, func(tx *sql.Tx) error {
+			if err := m.updateJobStatus(ctx, tx, jobName, "running", "", now, false); err != nil {
+				return err
+			}
+			if err := processFn(ctx, tx, ts); err != nil {
+				return err
+			}
+			return m.updateJobStatus(ctx, tx, jobName, "ok", ts.Format(time.RFC3339Nano), now, true)
+		})
+		if err != nil {
 			return err
 		}
-		return m.updateJobStatus(ctx, tx, jobName, "ok", bucketStart.Format(time.RFC3339Nano), now, true)
-	})
+	}
+
+	return nil
 }
 
 func (m *MaintenanceService) fetchTraceDurations(ctx context.Context, tx *sql.Tx, start, end time.Time, component, operation, toolName, taskType, traceKind string) ([]int64, error) {
@@ -223,4 +251,19 @@ func sqlTx(ctx context.Context, db *sql.DB, fn func(*sql.Tx) error) error {
 		return err
 	}
 	return tx.Commit()
+}
+
+func (m *MaintenanceService) getLastCompletedBucket(ctx context.Context, jobName string) (time.Time, error) {
+	var lastUTC sql.NullString
+	err := m.db.QueryRowContext(ctx, `SELECT last_completed_bucket_start_utc FROM obs_rollup_jobs WHERE job_name = ?`, jobName).Scan(&lastUTC)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return time.Time{}, nil
+		}
+		return time.Time{}, err
+	}
+	if !lastUTC.Valid || lastUTC.String == "" {
+		return time.Time{}, nil
+	}
+	return time.Parse(time.RFC3339Nano, lastUTC.String)
 }

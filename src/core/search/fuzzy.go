@@ -178,6 +178,7 @@ func FuzzySearch(ctx context.Context, db *sql.DB, embedder Embedder, query strin
 	}
 
 	var vectorResults []SearchResult
+	vectorAvailable := false
 	if embedder != nil {
 		embedCtx, cancel := context.WithTimeout(ctx, embedTimeout)
 		vector, err := embedder.GenerateVector(embedCtx, query)
@@ -187,6 +188,8 @@ func FuzzySearch(ctx context.Context, db *sql.DB, embedder Embedder, query strin
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error en búsqueda vectorial: %v\n", err)
 				vectorResults = nil
+			} else {
+				vectorAvailable = true
 			}
 		} else {
 			fmt.Fprintf(os.Stderr, "Error generando vector para búsqueda: %v\n", err)
@@ -330,6 +333,11 @@ func FuzzySearch(ctx context.Context, db *sql.DB, embedder Embedder, query strin
 		if !ok {
 			coverage = "none"
 		}
+		// Si tenemos vectores pero la búsqueda no pudo usarlos, la cobertura
+		// efectiva para este resultado es partial (solo lexical).
+		if coverage == "complete" && !vectorAvailable {
+			coverage = "partial"
+		}
 		results = append(results, MemorySearchResult{
 			MemoryID:       memoryID,
 			Score:          finalScore,
@@ -392,13 +400,33 @@ func VectorSearch(ctx context.Context, db *sql.DB, vector []float32, limit int, 
 
 	var rows *sql.Rows
 	if project != "" {
-		rows, err = db.QueryContext(ctx, `
-			SELECT v.rowid 
-			FROM memory_chunks_vec v
-			JOIN memory_chunks c ON c.id = v.rowid
+		// 1. Get KNN candidates
+		candidateRows, err := db.QueryContext(ctx, "SELECT rowid FROM memory_chunks_vec WHERE embedding MATCH ? LIMIT ?", blob, limit*10)
+		if err != nil {
+			return nil, err
+		}
+		defer candidateRows.Close()
+
+		var candidates []any
+		for candidateRows.Next() {
+			var id int64
+			if err := candidateRows.Scan(&id); err != nil {
+				return nil, err
+			}
+			candidates = append(candidates, id)
+		}
+		if len(candidates) == 0 {
+			return nil, nil
+		}
+
+		// 2. Filter candidates by project
+		placeholders := strings.Repeat(",?", len(candidates))[1:]
+		args := append(candidates, project)
+		rows, err = db.QueryContext(ctx, fmt.Sprintf(`
+			SELECT c.id 
+			FROM memory_chunks c
 			JOIN memories m ON m.id = c.memory_id
-			WHERE v.embedding MATCH ? AND m.project = ?
-			LIMIT ?`, blob, project, limit)
+			WHERE c.id IN (%s) AND m.project = ?`, placeholders), args...)
 	} else {
 		rows, err = db.QueryContext(ctx, "SELECT rowid FROM memory_chunks_vec WHERE embedding MATCH ? LIMIT ?", blob, limit)
 	}
