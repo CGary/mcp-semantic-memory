@@ -29,3 +29,4 @@ tmp/
 .DS_Store
 
 backups/
+.aider*
