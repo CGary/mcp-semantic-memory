@@ -30,3 +30,13 @@ tmp/
 
 backups/
 .aider*
+
+# Quorum
+.ai/tasks/active/*
+.ai/tasks/done/*
+.ai/tasks/failed/*
+.ai/tasks/inbox/*
+!.ai/tasks/active/.gitkeep
+!.ai/tasks/done/.gitkeep
+!.ai/tasks/failed/.gitkeep
+!.ai/tasks/inbox/.gitkeep
